@@ -10,11 +10,15 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-import { X, Trash2, ChevronRight } from "lucide-react";
-import { Issue, Project, statuses, Priority } from "@/lib/workspace";
+import { X, Trash2, ChevronRight, Loader2 } from "lucide-react";
+import type { Issue, Project, Priority } from "@/lib/workspace";
+import { statuses, priorities } from "@/lib/domain";
+import type { WorkspaceMember } from "@/lib/use-workspace";
 export default function IssueDialog({
   issue,
   projects,
+  members,
+  pending,
   existing,
   onClose,
   onSave,
@@ -22,6 +26,8 @@ export default function IssueDialog({
 }: {
   issue: Issue;
   projects: Project[];
+  members: WorkspaceMember[];
+  pending: boolean;
   existing: boolean;
   onClose: () => void;
   onSave: (issue: Issue) => void;
@@ -45,8 +51,10 @@ export default function IssueDialog({
           Edit issue details, status, priority, and project.
         </DialogDescription>
         <form
+          aria-busy={pending}
           onSubmit={(e) => {
             e.preventDefault();
+            if (pending) return;
             const data = new FormData(e.currentTarget);
             onSave({
               ...issue,
@@ -95,7 +103,7 @@ export default function IssueDialog({
               placeholder="Add a description…"
               defaultValue={issue.description}
             />
-            <div className="flex flex-wrap gap-2">
+            <fieldset disabled={pending} className="flex flex-wrap gap-2">
               <NativeSelect
                 className="h-auto rounded-[5px] bg-muted p-[7px] pr-8 text-[10px] text-[#bcb6cb]"
                 aria-label="Status"
@@ -112,7 +120,7 @@ export default function IssueDialog({
                 name="priority"
                 defaultValue={issue.priority}
               >
-                {["No priority", "Low", "Medium", "High", "Urgent"].map((s) => (
+                {priorities.map((s) => (
                   <option key={s}>{s}</option>
                 ))}
               </NativeSelect>
@@ -123,8 +131,14 @@ export default function IssueDialog({
                 defaultValue={issue.assignee}
               >
                 <option value="">Unassigned</option>
-                {["JL", "AM", "SK"].map((s) => (
-                  <option key={s}>{s}</option>
+                {issue.assignee &&
+                  !members.some((member) => member.id === issue.assignee) && (
+                    <option value={issue.assignee}>Team member</option>
+                  )}
+                {members.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name}
+                  </option>
                 ))}
               </NativeSelect>
               <NativeSelect
@@ -152,12 +166,12 @@ export default function IssueDialog({
                   ),
                 )}
               </NativeSelect>
-            </div>
+            </fieldset>
           </div>
           <footer className="flex items-center justify-end gap-3 border-t border-[#333139] px-[23px] py-4 [&>span]:mr-auto [&>span]:text-[10px] [&>span]:text-[#77727f] max-[700px]:[&>span]:hidden">
             <span>
               {existing
-                ? "Changes stay in this session"
+                ? "Changes are saved locally and synced"
                 : "A good idea starts with an issue."}
             </span>
             {existing && (
@@ -167,6 +181,7 @@ export default function IssueDialog({
                 type="button"
                 className="inline-flex size-[25px] items-center justify-center rounded text-[#7d7e88] hover:bg-[#303137] hover:text-destructive"
                 aria-label="Delete issue"
+                disabled={pending}
                 onClick={onDelete}
               >
                 <Trash2 size={16} />
@@ -175,7 +190,9 @@ export default function IssueDialog({
             <Button
               className="border border-[#c0b0f9] shadow-[0_1px_3px_#0004] [&_kbd]:ml-2.5 [&_kbd]:rounded-[3px] [&_kbd]:border [&_kbd]:border-[#9987ca] [&_kbd]:px-1 [&_kbd]:text-[#665580] [&_kbd:empty]:hidden"
               type="submit"
+              disabled={pending}
             >
+              {pending && <Loader2 className="size-4 animate-spin" />}
               {existing ? "Save changes" : "Create issue"} <span>↵</span>
             </Button>
           </footer>

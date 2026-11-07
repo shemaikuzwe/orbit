@@ -9,10 +9,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { IssueAvatar, IssueLabel } from "./issue-meta";
 import { Plus } from "lucide-react";
-import { statuses, type Issue, type Status } from "@/lib/workspace";
+import type { Issue, Status } from "@/lib/workspace";
+import { statuses } from "@/lib/domain";
+import type { WorkspaceMember } from "@/lib/use-workspace";
 import { StatusIcon, PriorityIcon } from "./issue-icons";
 export default function IssueViews({
   view,
+  members,
   issues,
   dragEnd,
   createIssue,
@@ -21,6 +24,7 @@ export default function IssueViews({
 }: {
   view: "board" | "list";
   issues: Issue[];
+  members: WorkspaceMember[];
   dragEnd: (result: DropResult) => void;
   createIssue: (status?: Status) => void;
   setEditing: (issue: Issue) => void;
@@ -120,7 +124,7 @@ export default function IssueViews({
                 <span className="text-[#797985]">{i.id}</span>
                 <strong>{i.title}</strong>
                 <IssueLabel label={i.label} className="max-[700px]:hidden" />
-                <IssueAvatar assignee={i.assignee} />
+                <IssueAvatar assignee={i.assignee} members={members} />
               </Button>
             ))}
         </section>

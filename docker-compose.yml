@@ -1,0 +1,57 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    command:
+      - postgres
+      - -c
+      - wal_level=logical
+      - -c
+      - max_replication_slots=10
+      - -c
+      - max_wal_senders=10
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: linear_clone
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev}
+      PS_REPLICATION_PASSWORD: ${PS_REPLICATION_PASSWORD:-replication_dev}
+      PS_STORAGE_PASSWORD: ${PS_STORAGE_PASSWORD:-storage_dev}
+    ports:
+      - "127.0.0.1:5431:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./powersync/init.sql:/docker-entrypoint-initdb.d/10-powersync.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d linear_clone"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  powersync:
+    image: journeyapps/powersync-service:latest
+    command: ["start", "-r", "unified"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      POWERSYNC_CONFIG_PATH: /config/config.yaml
+      PS_REPLICATION_PASSWORD: ${PS_REPLICATION_PASSWORD:-replication_dev}
+      PS_STORAGE_PASSWORD: ${PS_STORAGE_PASSWORD:-storage_dev}
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./powersync/config.yaml:/config/config.yaml:ro
+      - ./powersync/sync.yaml:/config/sync.yaml:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --spider --quiet http://localhost:8080/health || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

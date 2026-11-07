@@ -1,4 +1,4 @@
-import Workspace from "@/components/workspace";
+import WorkspaceGate from "@/components/workspace-gate";
 export default function Page() {
-  return <Workspace />;
+  return <WorkspaceGate />;
 }

@@ -1,10 +1,5 @@
 import { cn } from "@/lib/utils";
-
-const avatarColors: Record<string, string> = {
-  JL: "bg-[#3d3c51] text-[#c3bee4]",
-  AM: "bg-[#4a3d35] text-[#d3b49e]",
-  SK: "bg-[#324740] text-[#a6cabc]",
-};
+import type { WorkspaceMember } from "@/lib/use-workspace";
 const labelColors: Record<string, string> = {
   Feature: "text-[#a6a2b3] [&>i]:bg-[#b69add]",
   Design: "text-[#bea0a8] [&>i]:bg-[#db9c9f]",
@@ -14,20 +9,31 @@ const labelColors: Record<string, string> = {
 };
 export function IssueAvatar({
   assignee,
+  members = [],
   small = false,
 }: {
   assignee: string;
+  members?: WorkspaceMember[];
   small?: boolean;
 }) {
+  const name = members.find((member) => member.id === assignee)?.name;
+  const initials = name
+    ?.trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
   return (
     <span
+      title={name || (assignee ? "Team member" : "Unassigned")}
+      aria-label={name || (assignee ? "Team member" : "Unassigned")}
       className={cn(
         "inline-flex size-[23px] shrink-0 items-center justify-center rounded-full border border-white/5 bg-[#353238] text-[8px] font-semibold text-[#b9afc6]",
-        avatarColors[assignee],
         small && "size-5 text-[7px]",
       )}
     >
-      {assignee || "–"}
+      {initials || (assignee ? "?" : "–")}
     </span>
   );
 }

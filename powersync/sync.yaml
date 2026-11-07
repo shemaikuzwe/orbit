@@ -1,0 +1,37 @@
+config:
+  edition: 3
+  storage_version: 2
+
+streams:
+  team_data:
+    auto_subscribe: true
+    with:
+      my_teams: |
+        SELECT organization_id FROM public.member
+        WHERE user_id = auth.user_id()
+    queries:
+      - |
+        SELECT id, team_id, name, description, color, target
+        FROM public.projects
+        WHERE team_id IN my_teams
+      - |
+        SELECT id, team_id, title, description, status, priority,
+               project_id, label, assignee_id, position
+        FROM public.issues
+        WHERE team_id IN my_teams
+      - |
+        SELECT id, organization_id AS team_id, user_id
+        FROM public.member AS team_members
+        WHERE organization_id IN my_teams
+
+  assignee_profiles:
+    auto_subscribe: true
+    query: |
+      SELECT id, name FROM public."user"
+      WHERE id IN (
+        SELECT user_id FROM public.member
+        WHERE organization_id IN (
+          SELECT organization_id FROM public.member
+          WHERE user_id = auth.user_id()
+        )
+      )

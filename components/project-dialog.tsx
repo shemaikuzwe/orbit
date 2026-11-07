@@ -9,12 +9,14 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-import { Box, X, ArrowUpRight } from "lucide-react";
+import { Box, X, ArrowUpRight, Loader2 } from "lucide-react";
 import type { Project } from "@/lib/workspace";
 export default function ProjectDialog({
   onClose,
   onSave,
+  pending = false,
 }: {
+  pending?: boolean;
   onClose: () => void;
   onSave: (project: Project) => void;
 }) {
@@ -36,6 +38,7 @@ export default function ProjectDialog({
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            if (pending) return;
             const data = new FormData(e.currentTarget);
             onSave({
               id: crypto.randomUUID(),
@@ -120,7 +123,9 @@ export default function ProjectDialog({
             <Button
               className="border border-[#c0b0f9] shadow-[0_1px_3px_#0004] [&_kbd]:ml-2.5 [&_kbd]:rounded-[3px] [&_kbd]:border [&_kbd]:border-[#9987ca] [&_kbd]:px-1 [&_kbd]:text-[#665580] [&_kbd:empty]:hidden"
               type="submit"
+              disabled={pending}
             >
+              {pending && <Loader2 className="size-4 animate-spin" />}
               Create project <ArrowUpRight size={14} />
             </Button>
           </footer>

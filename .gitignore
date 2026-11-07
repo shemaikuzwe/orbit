@@ -2,3 +2,7 @@ node_modules
 .next
 out
 *.tsbuildinfo
+public/@powersync
+.env
+.env.*
+!.env.example

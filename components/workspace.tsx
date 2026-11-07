@@ -8,7 +8,9 @@ import ProjectsGrid from "./projects-grid";
 import IssueViews from "./issue-views";
 import ProjectDialog from "./project-dialog";
 import { PriorityIcon } from "./issue-icons";
-import { useEffect, useReducer, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
+import { toast } from "sonner";
+import { useWorkspace } from "@/lib/use-workspace";
 import type { DropResult } from "@hello-pangea/dnd";
 import {
   Search,
@@ -23,17 +25,21 @@ import {
   PanelLeft,
   Folder,
   Sparkles,
-  Check,
 } from "lucide-react";
-import {
-  initialState,
-  workspaceReducer,
-  type Issue,
-  type Status,
-} from "@/lib/workspace";
+import type { Issue, Status } from "@/lib/workspace";
 import IssueDialog from "./issue-dialog";
-export default function Workspace() {
-  const [state, dispatch] = useReducer(workspaceReducer, initialState);
+export default function Workspace({
+  teamId,
+  user,
+  onSignOut,
+  signingOut,
+}: {
+  teamId: string;
+  user: { id: string; name: string };
+  onSignOut: () => Promise<void>;
+  signingOut: boolean;
+}) {
+  const state = useWorkspace(teamId);
   const [page, setPage] = useState<"issues" | "projects">("issues");
   const [projectId, setProjectId] = useState("");
   const [query, setQuery] = useState("");
@@ -43,7 +49,20 @@ export default function Workspace() {
   const [editing, setEditing] = useState<Issue | null>(null);
   const [projectDialog, setProjectDialog] = useState(false);
   const [sidebar, setSidebar] = useState(false);
-  const [toast, setToast] = useState("");
+  const [saving, setSaving] = useState(false);
+  async function persist(action: () => Promise<void>, message: string) {
+    setSaving(true);
+    try {
+      await action();
+      toast.success(message);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to save your change",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
   const searchRef = useRef<HTMLInputElement>(null);
   const selectedProject = state.projects.find((p) => p.id === projectId);
   const issues = state.issues.filter(
@@ -54,7 +73,7 @@ export default function Workspace() {
   );
   function createIssue(status: Status = "Todo") {
     setEditing({
-      id: `ORB-${Math.max(29, ...state.issues.map((i) => Number(i.id.split("-")[1]))) + 1}`,
+      id: crypto.randomUUID(),
       title: "",
       description: "",
       status,
@@ -90,11 +109,7 @@ export default function Workspace() {
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   });
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(""), 3000);
-    return () => clearTimeout(timer);
-  }, [toast]);
+
   function dragEnd(result: DropResult) {
     if (!result.destination) return;
     const destination = issues.filter(
@@ -102,12 +117,15 @@ export default function Workspace() {
         i.status === result.destination!.droppableId &&
         i.id !== result.draggableId,
     );
-    dispatch({
-      type: "move-issue",
-      id: result.draggableId,
-      status: result.destination.droppableId as Status,
-      beforeId: destination[result.destination.index]?.id,
-    });
+    void persist(
+      () =>
+        state.moveIssue(
+          result.draggableId,
+          result.destination!.droppableId as Status,
+          destination[result.destination!.index]?.id,
+        ),
+      "Issue moved",
+    );
   }
   function navigate(next: "issues" | "projects", id = "") {
     setPage(next);
@@ -129,7 +147,11 @@ export default function Workspace() {
           <IssueLabel label={issue.label} />
           <span className="flex items-center gap-[9px] text-[#63636d]">
             {issue.projectId && <Box size={12} />}
-            <IssueAvatar assignee={issue.assignee} small />
+            <IssueAvatar
+              assignee={issue.assignee}
+              members={state.members}
+              small
+            />
           </span>
         </div>
       </>
@@ -235,10 +257,18 @@ export default function Workspace() {
           </div>
         </div>
         <div className="flex h-[76px] items-center gap-2.5 border-t border-[#242529] px-2.5 [&>div]:flex [&>div]:flex-1 [&>div]:flex-col [&>div]:gap-1 [&_strong]:text-[11px] [&_strong]:font-medium [&>div>span]:text-[10px] [&>div>span]:text-[#656670]">
-          <IssueAvatar assignee="JL" />
+          <IssueAvatar assignee={user.id} members={[user]} />
           <div>
-            <strong>Jamie Lee</strong>
-            <span>Personal workspace</span>
+            <strong>{user.name}</strong>
+            <Button
+              variant="ghost"
+              size="none"
+              className="justify-start text-[10px] text-muted-foreground"
+              disabled={signingOut}
+              onClick={onSignOut}
+            >
+              {signingOut ? "Signing out…" : "Sign out"}
+            </Button>
           </div>
           <ChevronDown size={14} />
         </div>
@@ -382,6 +412,7 @@ export default function Workspace() {
         {page === "issues" ? (
           <IssueViews
             view={view}
+            members={state.members}
             issues={issues}
             dragEnd={dragEnd}
             createIssue={createIssue}
@@ -406,7 +437,7 @@ export default function Workspace() {
             {page === "issues"
               ? "Drag issues to update their status"
               : "Build something that matters"}
-            <span className="mx-1 text-[#474750]">·</span> In-memory session
+            <span className="mx-1 text-[#474750]">·</span> Saved on this device
           </span>
         </footer>
       </main>
@@ -415,39 +446,36 @@ export default function Workspace() {
           key={editing.id}
           issue={editing}
           projects={state.projects}
+          members={state.members}
+          pending={saving}
           existing={state.issues.some((i) => i.id === editing.id)}
           onClose={() => setEditing(null)}
-          onSave={(issue) => {
-            dispatch({ type: "save-issue", issue });
-            setEditing(null);
-            setToast("Issue saved");
-          }}
-          onDelete={() => {
-            dispatch({ type: "delete-issue", id: editing.id });
-            setEditing(null);
-            setToast("Issue deleted");
-          }}
+          onSave={(issue) =>
+            persist(async () => {
+              await state.saveIssue(issue);
+              setEditing(null);
+            }, "Issue saved")
+          }
+          onDelete={() =>
+            persist(async () => {
+              await state.deleteIssue(editing.id);
+              setEditing(null);
+            }, "Issue deleted")
+          }
         />
       )}
       {projectDialog && (
         <ProjectDialog
           onClose={() => setProjectDialog(false)}
-          onSave={(project) => {
-            dispatch({ type: "create-project", project });
-            setProjectDialog(false);
-            navigate("issues", project.id);
-            setToast("Project created");
-          }}
+          pending={saving}
+          onSave={(project) =>
+            persist(async () => {
+              await state.createProject(project);
+              setProjectDialog(false);
+              navigate("issues", project.id);
+            }, "Project created")
+          }
         />
-      )}
-      {toast && (
-        <div
-          role="status"
-          className="fixed bottom-7 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2.5 rounded-lg border border-[#5a4e70] bg-[#34303f] px-[22px] py-[13px] text-xs text-[#ded4f3] shadow-[0_8px_30px_#0006]"
-        >
-          <Check size={15} />
-          {toast}
-        </div>
       )}
     </div>
   );
