@@ -35,14 +35,14 @@ export default function IssueViews({
       <div className="grid flex-1 grid-cols-[repeat(4,minmax(210px,1fr))] content-start gap-[21px] overflow-auto px-8 pt-[25px] pb-10 min-[1600px]:gap-[26px] max-[1200px]:grid-cols-[repeat(4,230px)] max-[1200px]:gap-3.5 max-[1200px]:p-[23px] max-[700px]:grid-cols-[repeat(4,250px)] max-[700px]:px-5 max-[700px]:py-[22px]">
         {statuses.map((status) => (
           <section className="min-w-0" key={status}>
-            <div className="mx-[3px] mb-[17px] flex items-center gap-2 [&>h2]:text-[11px] [&>h2]:font-[550] [&>span]:ml-[3px] [&>span]:text-[10px] [&>span]:text-[#686974] [&>button]:ml-auto">
+            <div className="mx-[3px] mb-[17px] flex items-center gap-2 [&>h2]:text-[11px] [&>h2]:font-[550] [&>span]:ml-[3px] [&>span]:text-[10px] [&>span]:text-faint-foreground [&>button]:ml-auto">
               <StatusIcon status={status} />
               <h2>{status}</h2>
               <span>{issues.filter((i) => i.status === status).length}</span>
               <Button
                 variant="ghost"
                 size="none"
-                className="inline-flex size-[25px] items-center justify-center rounded text-[#7d7e88] hover:bg-[#303137] hover:text-[#eeeeee]"
+                className="inline-flex size-[25px] items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
                 onClick={() => createIssue(status)}
                 aria-label={`Add issue to ${status}`}
               >
@@ -70,9 +70,9 @@ export default function IssueViews({
                             {...drag.draggableProps}
                             {...drag.dragHandleProps}
                             className={cn(
-                              "mb-2.5 min-h-[123px] rounded-[7px] border border-[#303035] bg-card px-[13px] pt-[13px] pb-3 shadow-[0_2px_3px_#00000014] transition-colors hover:border-[#57515f] hover:bg-[#202125] min-[1600px]:min-h-[140px] min-[1600px]:p-[17px]",
+                              "mb-2.5 min-h-[123px] rounded-[7px] border border-border bg-card px-[13px] pt-[13px] pb-3 shadow-[0_2px_3px_#00000014] transition-colors hover:border-border-strong hover:bg-hover min-[1600px]:min-h-[140px] min-[1600px]:p-[17px]",
                               snapshot.isDragging &&
-                                "border-[#b4a2e6] shadow-[0_12px_35px_#0007]",
+                                "border-primary shadow-[0_12px_35px_#0007]",
                             )}
                             onClick={() => setEditing(issue)}
                             aria-label={issue.title}
@@ -86,7 +86,7 @@ export default function IssueViews({
                   <Button
                     variant="ghost"
                     size="none"
-                    className="flex w-full items-center justify-start gap-[7px] rounded-[5px] p-2 text-[10px] text-[#62636f] hover:bg-[#202125] hover:text-[#b7b4c4]"
+                    className="flex w-full items-center justify-start gap-[7px] rounded-[5px] p-2 text-[10px] text-faint-foreground hover:bg-hover hover:text-soft-foreground"
                     onClick={() => createIssue(status)}
                   >
                     <Plus size={14} /> Add issue
@@ -101,11 +101,11 @@ export default function IssueViews({
   ) : (
     <div className="flex-1 px-[34px] py-[22px]">
       {issues.length === 0 && (
-        <p className="p-5 text-[#98919f]">No issues match your search.</p>
+        <p className="p-5 text-soft-foreground">No issues match your search.</p>
       )}
       {statuses.map((status) => (
         <section key={status}>
-          <div className="mt-2 flex gap-[9px] bg-[#1c1d21] px-2.5 py-3 text-[11px] [&>span]:ml-1 [&>span]:text-[#7a7a85]">
+          <div className="mt-2 flex gap-[9px] bg-card px-2.5 py-3 text-[11px] [&>span]:ml-1 [&>span]:text-muted-foreground">
             <StatusIcon status={status} />
             {status}
             <span>{issues.filter((i) => i.status === status).length}</span>
@@ -116,7 +116,7 @@ export default function IssueViews({
               <Button
                 variant="ghost"
                 size="none"
-                className="flex w-full items-center justify-start gap-[15px] rounded-none border-b border-[#25262c] px-2.5 py-3.5 text-left text-[11px] hover:bg-[#202125] max-[700px]:gap-[9px] [&>strong]:flex-1 [&>strong]:font-[450]"
+                className="flex w-full items-center justify-start gap-[15px] rounded-none border-b border-border px-2.5 py-3.5 text-left text-[11px] hover:bg-hover max-[700px]:gap-[9px] [&>strong]:flex-1 [&>strong]:font-[450]"
                 key={i.id}
                 onClick={() => setEditing(i)}
               >

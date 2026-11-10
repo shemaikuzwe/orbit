@@ -2,6 +2,8 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --font-sans: "DM Sans", sans-serif;
   --color-background: var(--background);
@@ -16,10 +18,14 @@
   --color-secondary-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-soft-foreground: var(--soft-foreground);
+  --color-faint-foreground: var(--faint-foreground);
+  --color-hover: var(--hover);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: #f29393;
+  --color-destructive: var(--destructive);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-sidebar: var(--sidebar);
@@ -29,6 +35,30 @@
   --radius-xl: calc(var(--radius) + 5px);
 }
 :root {
+  color-scheme: light;
+  --background: #fcfcfd;
+  --foreground: #1d1d22;
+  --sidebar: #f5f5f7;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --primary: #6e56cf;
+  --primary-foreground: #ffffff;
+  --secondary: #ece9f6;
+  --muted: #f0f0f3;
+  --muted-foreground: #6b6c76;
+  --soft-foreground: #4e4f58;
+  --faint-foreground: #8e8f99;
+  --accent: #ece8fb;
+  --accent-foreground: #5b45b8;
+  --hover: #f0f0f3;
+  --border: #e6e6ea;
+  --border-strong: #c8c6d0;
+  --input: #d8d6df;
+  --ring: #7c66dc;
+  --destructive: #d9483b;
+  --radius: 6px;
+}
+.dark {
   color-scheme: dark;
   --background: #141517;
   --foreground: #e8e8eb;
@@ -40,12 +70,16 @@
   --secondary: #2e2b35;
   --muted: #27272e;
   --muted-foreground: #85868e;
+  --soft-foreground: #a8a6b2;
+  --faint-foreground: #666771;
   --accent: #27242f;
   --accent-foreground: #d1c4ff;
+  --hover: #202125;
   --border: #292a2e;
+  --border-strong: #57515f;
   --input: #3e3b48;
   --ring: #b2a3f4;
-  --radius: 6px;
+  --destructive: #f29393;
 }
 @layer base {
   * {
@@ -65,7 +99,7 @@
     @apply shrink-0;
   }
   kbd {
-    @apply font-sans text-[10px] text-[#74757e];
+    @apply font-sans text-[10px] text-faint-foreground;
   }
   @media (prefers-reduced-motion: reduce) {
     * {

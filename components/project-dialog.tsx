@@ -29,7 +29,7 @@ export default function ProjectDialog({
     >
       <DialogContent
         showCloseButton={false}
-        className="w-[520px] max-w-[calc(100%-32px)] gap-0 overflow-hidden rounded-[11px] border-[#424049] bg-popover p-0 shadow-[0_30px_120px_#0009] sm:max-w-[520px]"
+        className="w-[520px] max-w-[calc(100%-32px)] gap-0 overflow-hidden rounded-[11px] border-input bg-popover p-0 shadow-[0_30px_120px_#0009] sm:max-w-[520px]"
       >
         <DialogTitle className="sr-only">New project</DialogTitle>
         <DialogDescription className="sr-only">
@@ -56,25 +56,25 @@ export default function ProjectDialog({
             });
           }}
         >
-          <div className="flex h-[59px] items-center gap-[9px] border-b border-[#313037] px-[23px] text-[11px] text-[#a8a3b6]">
+          <div className="flex h-[59px] items-center gap-[9px] border-b border-border px-[23px] text-[11px] text-soft-foreground">
             <Box size={17} /> New project
             <Button
               variant="ghost"
               size="none"
               type="button"
-              className="ml-auto inline-flex size-[25px] items-center justify-center rounded text-[#7d7e88] hover:bg-[#303137] hover:text-[#eeeeee]"
+              className="ml-auto inline-flex size-[25px] items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
               aria-label="Close dialog"
               onClick={onClose}
             >
               <X size={18} />
             </Button>
           </div>
-          <div className="p-6 [&>h2]:mb-[25px] [&>h2]:text-[21px] [&>h2]:font-medium [&>h2]:tracking-[-.5px] max-[700px]:[&>h2]:text-[19px] [&_label]:mb-[19px] [&_label]:flex [&_label]:flex-col [&_label]:gap-2 [&_label]:text-[11px] [&_label]:text-[#a8a3b5]">
+          <div className="p-6 [&>h2]:mb-[25px] [&>h2]:text-[21px] [&>h2]:font-medium [&>h2]:tracking-[-.5px] max-[700px]:[&>h2]:text-[19px] [&_label]:mb-[19px] [&_label]:flex [&_label]:flex-col [&_label]:gap-2 [&_label]:text-[11px] [&_label]:text-soft-foreground">
             <h2>Make room for your next idea.</h2>
             <label>
               Project name
               <Input
-                className="h-auto rounded-[5px] border-[#3b3843] bg-[#17181c] p-2.5 text-xs md:text-xs"
+                className="h-auto rounded-[5px] border-input bg-background p-2.5 text-xs md:text-xs"
                 name="name"
                 placeholder="e.g. A better onboarding"
                 required
@@ -85,7 +85,7 @@ export default function ProjectDialog({
             <label>
               Description
               <Textarea
-                className="h-[85px] resize-y rounded-[5px] border-[#3b3843] bg-[#17181c] p-2.5 text-xs md:text-xs"
+                className="h-[85px] resize-y rounded-[5px] border-input bg-background p-2.5 text-xs md:text-xs"
                 name="description"
                 placeholder="What are you working towards?"
                 maxLength={250}
@@ -95,7 +95,7 @@ export default function ProjectDialog({
               <label>
                 Target date
                 <Input
-                  className="h-auto rounded-[5px] border-[#3b3843] bg-[#17181c] p-2.5 text-xs md:text-xs"
+                  className="h-auto rounded-[5px] border-input bg-background p-2.5 text-xs md:text-xs"
                   type="date"
                   name="target"
                 />
@@ -103,7 +103,7 @@ export default function ProjectDialog({
               <label>
                 Project color
                 <Input
-                  className="h-[38px] w-[65px] rounded-[5px] border-[#3b3843] bg-[#17181c] p-[5px]"
+                  className="h-[38px] w-[65px] rounded-[5px] border-input bg-background p-[5px]"
                   type="color"
                   name="color"
                   defaultValue="#a89af9"
@@ -111,17 +111,17 @@ export default function ProjectDialog({
               </label>
             </div>
           </div>
-          <footer className="flex items-center justify-end gap-3 border-t border-[#333139] px-[23px] py-4 [&>span]:mr-auto [&>span]:text-[10px] [&>span]:text-[#77727f] max-[700px]:[&>span]:hidden">
+          <footer className="flex items-center justify-end gap-3 border-t border-border px-[23px] py-4 [&>span]:mr-auto [&>span]:text-[10px] [&>span]:text-muted-foreground max-[700px]:[&>span]:hidden">
             <Button
               variant="secondary"
               type="button"
-              className="border border-[#423d4d]"
+              className="border border-input"
               onClick={onClose}
             >
               Cancel
             </Button>
             <Button
-              className="border border-[#c0b0f9] shadow-[0_1px_3px_#0004] [&_kbd]:ml-2.5 [&_kbd]:rounded-[3px] [&_kbd]:border [&_kbd]:border-[#9987ca] [&_kbd]:px-1 [&_kbd]:text-[#665580] [&_kbd:empty]:hidden"
+              className="border border-white/15 shadow-[0_1px_3px_#0004] [&_kbd]:ml-2.5 [&_kbd]:rounded-[3px] [&_kbd]:border [&_kbd]:border-primary-foreground/25 [&_kbd]:px-1 [&_kbd]:text-primary-foreground/60 [&_kbd:empty]:hidden"
               type="submit"
               disabled={pending}
             >

@@ -40,7 +40,7 @@ function IssueSelect({
       <SelectTrigger
         size="sm"
         aria-label={label}
-        className="h-auto rounded-[5px] bg-muted p-[7px] text-[10px] text-[#bcb6cb]"
+        className="h-auto rounded-[5px] bg-muted p-[7px] text-[10px] text-soft-foreground"
       >
         <SelectValue />
       </SelectTrigger>
@@ -83,7 +83,7 @@ export default function IssueDialog({
     >
       <DialogContent
         showCloseButton={false}
-        className="w-[720px] max-w-[calc(100%-32px)] gap-0 overflow-hidden rounded-[11px] border-[#424049] bg-popover p-0 shadow-[0_30px_120px_#0009] sm:max-w-[720px]"
+        className="w-[720px] max-w-[calc(100%-32px)] gap-0 overflow-hidden rounded-[11px] border-input bg-popover p-0 shadow-[0_30px_120px_#0009] sm:max-w-[720px]"
       >
         <DialogTitle className="sr-only">
           {existing ? "Edit issue" : "New issue"}
@@ -111,12 +111,12 @@ export default function IssueDialog({
             });
           }}
         >
-          <div className="flex h-[59px] items-center gap-[9px] border-b border-[#313037] px-[23px] text-[11px] text-[#a8a3b6]">
+          <div className="flex h-[59px] items-center gap-[9px] border-b border-border px-[23px] text-[11px] text-soft-foreground">
             <Button
               variant="ghost"
               size="none"
               type="button"
-              className="ml-auto inline-flex size-[25px] items-center justify-center rounded text-[#7d7e88] hover:bg-[#303137] hover:text-[#eeeeee]"
+              className="ml-auto inline-flex size-[25px] items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
               onClick={onClose}
               aria-label="Close dialog"
             >
@@ -125,7 +125,7 @@ export default function IssueDialog({
           </div>
           <div className="px-7 pt-[27px] pb-[30px] max-[700px]:p-[22px]">
             <Input
-              className="h-auto rounded-none border-0 bg-transparent p-0 text-[23px] font-medium tracking-[-.5px] shadow-none placeholder:text-[#73707c] focus-visible:ring-0 md:text-[23px] max-[700px]:text-xl"
+              className="h-auto rounded-none border-0 bg-transparent p-0 text-[23px] font-medium tracking-[-.5px] shadow-none placeholder:text-faint-foreground focus-visible:ring-0 md:text-[23px] max-[700px]:text-xl"
               name="title"
               aria-label="Issue title"
               placeholder="Issue title"
@@ -135,7 +135,7 @@ export default function IssueDialog({
               maxLength={180}
             />
             <Textarea
-              className="my-5 block h-[175px] resize-y rounded-none border-0 bg-transparent p-0 text-[13px] leading-[1.9] text-[#b9b6c2] shadow-none placeholder:text-[#77737f] focus-visible:ring-0 md:text-[13px]"
+              className="my-5 block h-[175px] resize-y rounded-none border-0 bg-transparent p-0 text-[13px] leading-[1.9] text-soft-foreground shadow-none placeholder:text-faint-foreground focus-visible:ring-0 md:text-[13px]"
               name="description"
               aria-label="Issue description"
               placeholder="Add a description…"
@@ -190,7 +190,7 @@ export default function IssueDialog({
               />
             </fieldset>
           </div>
-          <footer className="flex items-center justify-end gap-3 border-t border-[#333139] px-[23px] py-4 [&>span]:mr-auto [&>span]:text-[10px] [&>span]:text-[#77727f] max-[700px]:[&>span]:hidden">
+          <footer className="flex items-center justify-end gap-3 border-t border-border px-[23px] py-4 [&>span]:mr-auto [&>span]:text-[10px] [&>span]:text-muted-foreground max-[700px]:[&>span]:hidden">
             <span>
               {existing
                 ? "Changes are saved locally and synced"
@@ -201,7 +201,7 @@ export default function IssueDialog({
                 variant="ghost"
                 size="none"
                 type="button"
-                className="inline-flex size-[25px] items-center justify-center rounded text-[#7d7e88] hover:bg-[#303137] hover:text-destructive"
+                className="inline-flex size-[25px] items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-destructive"
                 aria-label="Delete issue"
                 disabled={pending}
                 onClick={onDelete}
@@ -210,7 +210,7 @@ export default function IssueDialog({
               </Button>
             )}
             <Button
-              className="border border-[#c0b0f9] shadow-[0_1px_3px_#0004] [&_kbd]:ml-2.5 [&_kbd]:rounded-[3px] [&_kbd]:border [&_kbd]:border-[#9987ca] [&_kbd]:px-1 [&_kbd]:text-[#665580] [&_kbd:empty]:hidden"
+              className="border border-white/15 shadow-[0_1px_3px_#0004] [&_kbd]:ml-2.5 [&_kbd]:rounded-[3px] [&_kbd]:border [&_kbd]:border-primary-foreground/25 [&_kbd]:px-1 [&_kbd]:text-primary-foreground/60 [&_kbd:empty]:hidden"
               type="submit"
               disabled={pending}
             >

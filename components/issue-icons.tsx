@@ -22,10 +22,10 @@ export function StatusIcon({ status }: { status: Status }) {
       size={15}
       className={
         {
-          Backlog: "text-[#8c8c98]",
-          Todo: "text-[#a8a8b2]",
-          "In progress": "text-[#dfb969]",
-          Done: "text-[#9b8ada]",
+          Backlog: "text-muted-foreground",
+          Todo: "text-soft-foreground",
+          "In progress": "text-amber-600 dark:text-[#dfb969]",
+          Done: "text-primary",
         }[status]
       }
     />
@@ -43,7 +43,9 @@ export function PriorityIcon({ priority }: { priority: Issue["priority"] }) {
   return (
     <Icon
       size={15}
-      className={priority === "Urgent" ? "text-[#e68e7b]" : "text-[#8c8b95]"}
+      className={
+        priority === "Urgent" ? "text-destructive" : "text-muted-foreground"
+      }
     />
   );
 }

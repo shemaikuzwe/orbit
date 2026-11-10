@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { eq, useLiveQuery } from "@tanstack/react-db";
 import { Loader2 } from "lucide-react";
 import { Toaster, toast } from "sonner";
+import { useTheme } from "next-themes";
 import { useSession } from "@/components/session-provider";
 import { authClient } from "@/lib/auth-client";
 import { initializeSync, signOut, type WorkspaceSync } from "@/lib/sync";
@@ -146,6 +147,7 @@ export default function WorkspaceGate() {
   const [ready, setReady] = useState<{ userId: string; sync: WorkspaceSync }>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const { resolvedTheme } = useTheme();
   useEffect(() => {
     let cancelled = false;
     initializeSync(userId)
@@ -170,7 +172,7 @@ export default function WorkspaceGate() {
 
   return (
     <>
-      <Toaster richColors theme="dark" />
+      <Toaster richColors theme={resolvedTheme as "light" | "dark"} />
       {ready?.userId === userId ? (
         <TeamWorkspace
           key={session.user.id}

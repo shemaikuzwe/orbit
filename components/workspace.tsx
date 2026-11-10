@@ -14,6 +14,7 @@ import ProjectsGrid from "./projects-grid";
 import IssueViews from "./issue-views";
 import ProjectDialog from "./project-dialog";
 import { PriorityIcon } from "./issue-icons";
+import { UserMenu } from "./user-menu";
 import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/use-workspace";
@@ -142,7 +143,7 @@ export default function Workspace({
   function renderCard(issue: Issue) {
     return (
       <>
-        <div className="flex items-center justify-end text-[9px] text-[#72727e]">
+        <div className="flex items-center justify-end text-[9px] text-muted-foreground">
           <PriorityIcon priority={issue.priority} />
         </div>
         <h3 className="mt-2.5 mb-[18px] text-xs leading-[1.65] font-[450] tracking-[-.05px] min-[1600px]:text-[13px]">
@@ -150,7 +151,7 @@ export default function Workspace({
         </h3>
         <div className="flex items-center justify-between gap-2">
           <IssueLabel label={issue.label} />
-          <span className="flex items-center gap-[9px] text-[#63636d]">
+          <span className="flex items-center gap-[9px] text-faint-foreground">
             {issue.projectId && <Box size={12} />}
             <IssueAvatar
               assignee={issue.assignee}
@@ -176,23 +177,23 @@ export default function Workspace({
           className="flex w-full items-center gap-2.5 px-2 text-base font-semibold"
           onClick={() => navigate("issues")}
         >
-          <span className="grid size-[27px] place-items-center rounded-lg bg-[#b4a4ef] text-[26px] text-[#25202e]">
+          <span className="grid size-[27px] place-items-center rounded-lg bg-primary text-[26px] text-primary-foreground">
             ◒
           </span>{" "}
           Orbit <ChevronDown size={14} />
-          <span className="ml-auto text-[10px] font-normal text-[#73737d]">
+          <span className="ml-auto text-[10px] font-normal text-muted-foreground">
             ⌘ K
           </span>
         </Button>
         <Button
           variant="ghost"
           size="none"
-          className="mx-1 mt-[25px] mb-7 flex h-[34px] items-center justify-start gap-2 rounded-md border border-[#323338] bg-[#1b1c1f] px-[11px] text-xs hover:bg-[#26272c] [&_kbd]:ml-auto [&_kbd]:rounded-[3px] [&_kbd]:border [&_kbd]:border-[#393a3f] [&_kbd]:px-1"
+          className="mx-1 mt-[25px] mb-7 flex h-[34px] items-center justify-start gap-2 rounded-md border border-border bg-card px-[11px] text-xs hover:bg-hover [&_kbd]:ml-auto [&_kbd]:rounded-[3px] [&_kbd]:border [&_kbd]:border-border [&_kbd]:px-1"
           onClick={() => createIssue()}
         >
           <Plus size={15} /> Create issue <kbd>C</kbd>
         </Button>
-        <div className="mb-2.5 px-3 text-[10px] font-semibold tracking-[.055em] text-[#6f707a] uppercase">
+        <div className="mb-2.5 px-3 text-[10px] font-semibold tracking-[.055em] text-faint-foreground uppercase">
           Workspace
         </div>
         <nav className="flex flex-col gap-1">
@@ -200,11 +201,11 @@ export default function Workspace({
             variant="ghost"
             size="none"
             data-active={page === "issues" && !projectId}
-            className="h-[35px] w-full justify-start gap-2.5 rounded-[5px] px-3 text-left text-xs font-normal text-[#9b9ca5] hover:bg-[#1b1c20] data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+            className="h-[35px] w-full justify-start gap-2.5 rounded-[5px] px-3 text-left text-xs font-normal text-soft-foreground hover:bg-hover data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
             onClick={() => navigate("issues")}
           >
             <Layers size={16} /> Issues{" "}
-            <span className="ml-auto text-[10px] text-[#ab9bcf]">
+            <span className="ml-auto text-[10px] text-accent-foreground">
               {state.issues.length}
             </span>
           </Button>
@@ -212,18 +213,18 @@ export default function Workspace({
             variant="ghost"
             size="none"
             data-active={page === "projects"}
-            className="h-[35px] w-full justify-start gap-2.5 rounded-[5px] px-3 text-left text-xs font-normal text-[#9b9ca5] hover:bg-[#1b1c20] data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+            className="h-[35px] w-full justify-start gap-2.5 rounded-[5px] px-3 text-left text-xs font-normal text-soft-foreground hover:bg-hover data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
             onClick={() => navigate("projects")}
           >
             <LayoutGrid size={16} /> Projects
           </Button>
         </nav>
-        <div className="mt-[34px] mb-2.5 flex items-center justify-between px-3 text-[10px] font-semibold tracking-[.055em] text-[#6f707a] uppercase">
+        <div className="mt-[34px] mb-2.5 flex items-center justify-between px-3 text-[10px] font-semibold tracking-[.055em] text-faint-foreground uppercase">
           Your projects
           <Button
             variant="ghost"
             size="none"
-            className="inline-flex size-[25px] items-center justify-center rounded text-[#7d7e88] hover:bg-[#303137] hover:text-[#eeeeee]"
+            className="inline-flex size-[25px] items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
             onClick={() => setProjectDialog(true)}
             aria-label="Create project"
           >
@@ -237,7 +238,7 @@ export default function Workspace({
               size="none"
               key={p.id}
               data-active={page === "issues" && projectId === p.id}
-              className="h-[35px] w-full justify-start gap-2.5 rounded-[5px] px-3 text-left text-xs font-normal text-[#9b9ca5] hover:bg-[#1b1c20] data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+              className="h-[35px] w-full justify-start gap-2.5 rounded-[5px] px-3 text-left text-xs font-normal text-soft-foreground hover:bg-hover data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
               onClick={() => navigate("issues", p.id)}
             >
               <Box size={15} color={p.color} />
@@ -245,8 +246,8 @@ export default function Workspace({
             </Button>
           ))}
         </nav>
-        <div className="relative mx-2.5 mt-auto mb-[38px] min-h-[270px] overflow-hidden pt-[75px] [&>strong]:text-[11px] [&>strong]:font-medium [&>strong]:text-[#adadb5] [&>p]:my-[11px] [&>p]:text-[11px] [&>p]:leading-[1.7] [&>p]:text-[#60616c]">
-          <span className="mb-3 block text-[#ad9bdf]">
+        <div className="relative mx-2.5 mt-auto mb-[38px] min-h-[270px] overflow-hidden pt-[75px] [&>strong]:text-[11px] [&>strong]:font-medium [&>strong]:text-soft-foreground [&>p]:my-[11px] [&>p]:text-[11px] [&>p]:leading-[1.7] [&>p]:text-faint-foreground">
+          <span className="mb-3 block text-accent-foreground">
             <Sparkles size={15} />
           </span>
           <strong>A little space for big ideas.</strong>
@@ -255,42 +256,26 @@ export default function Workspace({
             <br />
             working on.
           </p>
-          <div className="absolute -bottom-[5px] -left-2.5 h-[90px] w-[200px] opacity-50 [&>span]:absolute [&>span]:top-5 [&>span]:left-1.5 [&>span]:h-[58px] [&>span]:w-[150px] [&>span]:-rotate-30 [&>span]:rounded-[50%] [&>span]:border [&>span]:border-[#504262] [&>span+span]:rotate-[28deg] [&>span+span]:border-[#37333e] [&>i]:absolute [&>i]:top-[18px] [&>i]:right-[43px] [&>i]:size-[7px] [&>i]:rounded-full [&>i]:bg-[#a693d1] [&>i]:shadow-[0_0_15px_#9680bb80]">
+          <div className="absolute -bottom-[5px] -left-2.5 h-[90px] w-[200px] opacity-50 [&>span]:absolute [&>span]:top-5 [&>span]:left-1.5 [&>span]:h-[58px] [&>span]:w-[150px] [&>span]:-rotate-30 [&>span]:rounded-[50%] [&>span]:border [&>span]:border-primary/40 [&>span+span]:rotate-[28deg] [&>span+span]:border-border [&>i]:absolute [&>i]:top-[18px] [&>i]:right-[43px] [&>i]:size-[7px] [&>i]:rounded-full [&>i]:bg-primary [&>i]:shadow-[0_0_15px_var(--primary)]">
             <span />
             <span />
             <i />
           </div>
         </div>
-        <div className="flex h-[76px] items-center gap-2.5 border-t border-[#242529] px-2.5 [&>div]:flex [&>div]:flex-1 [&>div]:flex-col [&>div]:gap-1 [&_strong]:text-[11px] [&_strong]:font-medium [&>div>span]:text-[10px] [&>div>span]:text-[#656670]">
-          <IssueAvatar assignee={user.id} members={[user]} />
-          <div>
-            <strong>{user.name}</strong>
-            <Button
-              variant="ghost"
-              size="none"
-              className="justify-start text-[10px] text-muted-foreground"
-              disabled={signingOut}
-              onClick={onSignOut}
-            >
-              {signingOut ? "Signing out…" : "Sign out"}
-            </Button>
-          </div>
-          <ChevronDown size={14} />
-        </div>
       </aside>
       <main className="ml-[232px] flex min-w-0 flex-1 flex-col max-[1200px]:ml-[205px] max-[700px]:ml-0">
-        <header className="flex h-[61px] shrink-0 items-center justify-between border-b px-8 text-[11px] max-[700px]:px-4 [&>div]:flex [&>div]:items-center [&>div]:gap-3 [&>div]:text-[#85858f] [&_strong]:font-medium [&_strong]:text-[#cdccd4]">
+        <header className="flex h-[61px] shrink-0 items-center justify-between border-b px-8 text-[11px] max-[700px]:px-4 [&>div]:flex [&>div]:items-center [&>div]:gap-3 [&>div]:text-muted-foreground [&_strong]:font-medium [&_strong]:text-foreground">
           <div>
             <Button
               variant="ghost"
               size="none"
-              className="inline-flex size-[25px] items-center justify-center rounded text-[#7d7e88] hover:bg-[#303137] hover:text-[#eeeeee] min-[701px]:hidden"
+              className="inline-flex size-[25px] items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground min-[701px]:hidden"
               onClick={() => setSidebar(!sidebar)}
               aria-label="Toggle navigation"
             >
               <PanelLeft size={18} />
             </Button>
-            <span className="inline-grid size-[18px] place-items-center rounded border border-[#494259] bg-[#333043] text-[10px] font-semibold text-[#c1b4e7]">
+            <span className="inline-grid size-[18px] place-items-center rounded border border-input bg-secondary text-[10px] font-semibold text-accent-foreground">
               O
             </span>
             <span>Orbit</span>
@@ -301,12 +286,14 @@ export default function Workspace({
                 : selectedProject?.name || "Issues"}
             </strong>
           </div>
-          <span className="flex items-center gap-[7px] text-[10px] text-[#787982] max-[700px]:text-[8px] [&>i]:size-[5px] [&>i]:rounded-full [&>i]:bg-[#8bb898]">
-            <i /> Local workspace
-          </span>
+          <UserMenu
+            name={user.name}
+            onSignOut={onSignOut}
+            signingOut={signingOut}
+          />
         </header>
         <section className="px-[34px] pt-[38px] pb-[29px] max-[1200px]:px-6 max-[700px]:px-5 max-[700px]:py-7">
-          <div className="mb-3 text-[9px] font-medium tracking-[.15em] text-[#85818f]">
+          <div className="mb-3 text-[9px] font-medium tracking-[.15em] text-muted-foreground">
             YOUR WORK, IN MOTION
           </div>
           <div className="flex items-center justify-between gap-5 max-[700px]:items-start [&_h1]:m-0 [&_h1]:flex [&_h1]:items-center [&_h1]:gap-3 [&_h1]:text-[26px] [&_h1]:font-[550] [&_h1]:tracking-[-.85px] max-[700px]:[&_h1]:text-[23px] [&_p]:mt-2.5 [&_p]:text-xs [&_p]:leading-normal [&_p]:text-muted-foreground max-[700px]:[&_p]:max-w-[235px] max-[700px]:[&_p]:text-[11px]">
@@ -315,7 +302,7 @@ export default function Workspace({
                 {page === "projects"
                   ? "Projects"
                   : selectedProject?.name || "All issues"}
-                <span className="rounded-[5px] border border-[#34343b] px-1.5 py-[3px] text-[11px] font-normal tracking-normal text-[#91909b]">
+                <span className="rounded-[5px] border border-border px-1.5 py-[3px] text-[11px] font-normal tracking-normal text-muted-foreground">
                   {page === "projects" ? state.projects.length : issues.length}
                 </span>
               </h1>
@@ -327,7 +314,7 @@ export default function Workspace({
               </p>
             </div>
             <Button
-              className="max-[700px]:gap-0 max-[700px]:p-[9px] max-[700px]:text-[0px] max-[700px]:[&_kbd]:hidden border border-[#c0b0f9] shadow-[0_1px_3px_#0004] [&_kbd]:ml-2.5 [&_kbd]:rounded-[3px] [&_kbd]:border [&_kbd]:border-[#9987ca] [&_kbd]:px-1 [&_kbd]:text-[#665580] [&_kbd:empty]:hidden"
+              className="max-[700px]:gap-0 max-[700px]:p-[9px] max-[700px]:text-[0px] max-[700px]:[&_kbd]:hidden border border-white/15 shadow-[0_1px_3px_#0004] [&_kbd]:ml-2.5 [&_kbd]:rounded-[3px] [&_kbd]:border [&_kbd]:border-primary-foreground/25 [&_kbd]:px-1 [&_kbd]:text-primary-foreground/60 [&_kbd:empty]:hidden"
               onClick={() =>
                 page === "projects" ? setProjectDialog(true) : createIssue()
               }
@@ -338,7 +325,7 @@ export default function Workspace({
             </Button>
           </div>
         </section>
-        <div className="relative flex h-14 shrink-0 items-center justify-between gap-2.5 border-y border-t-[#222327] px-[34px] max-[1200px]:px-6 max-[700px]:px-4">
+        <div className="relative flex h-14 shrink-0 items-center justify-between gap-2.5 border-y border-t-border px-[34px] max-[1200px]:px-6 max-[700px]:px-4">
           <div className="flex items-center gap-1">
             {page === "issues" ? (
               <>
@@ -346,7 +333,7 @@ export default function Workspace({
                   variant="ghost"
                   size="none"
                   data-active={view === "board"}
-                  className="flex items-center gap-[7px] rounded-[5px] px-2.5 py-1.5 text-[11px] font-normal text-[#82838d] data-[active=true]:bg-[#29292f] data-[active=true]:text-[#dedde6] data-[active=true]:shadow-[inset_0_0_0_1px_#38373f]"
+                  className="flex items-center gap-[7px] rounded-[5px] px-2.5 py-1.5 text-[11px] font-normal text-muted-foreground data-[active=true]:bg-muted data-[active=true]:text-foreground data-[active=true]:shadow-[inset_0_0_0_1px_var(--input)]"
                   onClick={() => setView("board")}
                 >
                   <LayoutGrid size={14} /> Board
@@ -355,23 +342,23 @@ export default function Workspace({
                   variant="ghost"
                   size="none"
                   data-active={view === "list"}
-                  className="flex items-center gap-[7px] rounded-[5px] px-2.5 py-1.5 text-[11px] font-normal text-[#82838d] data-[active=true]:bg-[#29292f] data-[active=true]:text-[#dedde6] data-[active=true]:shadow-[inset_0_0_0_1px_#38373f]"
+                  className="flex items-center gap-[7px] rounded-[5px] px-2.5 py-1.5 text-[11px] font-normal text-muted-foreground data-[active=true]:bg-muted data-[active=true]:text-foreground data-[active=true]:shadow-[inset_0_0_0_1px_var(--input)]"
                   onClick={() => setView("list")}
                 >
                   <List size={15} /> List
                 </Button>
               </>
             ) : (
-              <span className="flex items-center gap-2 text-[11px] text-[#b0acbc]">
+              <span className="flex items-center gap-2 text-[11px] text-soft-foreground">
                 <Folder size={15} /> All projects
               </span>
             )}
           </div>
           <div className="flex items-center gap-4 max-[700px]:gap-2.5">
-            <div className="flex items-center gap-2 text-[#73747f] [&_kbd]:text-[9px] max-[700px]:[&_kbd]:hidden">
+            <div className="flex items-center gap-2 text-muted-foreground [&_kbd]:text-[9px] max-[700px]:[&_kbd]:hidden">
               <Search size={14} />
               <Input
-                className="h-auto w-[126px] rounded-none border-0 p-0 text-[11px] shadow-none placeholder:text-[#71727c] focus-visible:ring-0 md:text-[11px] max-[700px]:w-[100px]"
+                className="h-auto w-[126px] rounded-none border-0 p-0 text-[11px] shadow-none placeholder:text-faint-foreground focus-visible:ring-0 md:text-[11px] max-[700px]:w-[100px]"
                 ref={searchRef}
                 aria-label="Search workspace"
                 placeholder={
@@ -387,8 +374,8 @@ export default function Workspace({
                 variant="ghost"
                 size="none"
                 className={cn(
-                  "flex items-center gap-[7px] rounded-[5px] border border-[#34343b] px-[9px] py-1.5 text-[10px] font-normal text-[#a5a4af]",
-                  priority && "border-[#8d79b7] text-[#c9b6ff]",
+                  "flex items-center gap-[7px] rounded-[5px] border border-border px-[9px] py-1.5 text-[10px] font-normal text-soft-foreground",
+                  priority && "border-ring/60 text-accent-foreground",
                 )}
                 onClick={() => setFilters(!filters)}
               >
@@ -398,7 +385,7 @@ export default function Workspace({
             )}
           </div>
           {filters && page === "issues" && (
-            <div className="absolute top-12 right-[34px] z-5 grid gap-3 rounded-lg border border-[#42404c] bg-[#25252c] p-4 text-[11px] shadow-[0_12px_30px_#0005]">
+            <div className="absolute top-12 right-[34px] z-5 grid gap-3 rounded-lg border border-input bg-popover p-4 text-[11px] shadow-[0_12px_30px_#0005]">
               <strong>Filter by priority</strong>
               <Select
                 value={priority || "all"}
@@ -407,7 +394,7 @@ export default function Workspace({
                 <SelectTrigger
                   size="sm"
                   aria-label="Filter priority"
-                  className="h-auto rounded-[5px] bg-muted p-[7px] text-[10px] text-[#bcb6cb]"
+                  className="h-auto rounded-[5px] bg-muted p-[7px] text-[10px] text-soft-foreground"
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -446,16 +433,17 @@ export default function Workspace({
             onCreate={() => setProjectDialog(true)}
           />
         )}
-        <footer className="mt-auto flex items-center justify-between gap-5 px-8 py-[17px] text-[9px] text-[#62636b] max-[700px]:px-5 max-[700px]:py-4 [&>span]:flex [&>span]:items-center [&>span]:gap-2 max-[1200px]:[&>span:last-child]:hidden">
+        <footer className="mt-auto flex items-center justify-between gap-5 px-8 py-[17px] text-[9px] text-faint-foreground max-[700px]:px-5 max-[700px]:py-4 [&>span]:flex [&>span]:items-center [&>span]:gap-2 max-[1200px]:[&>span:last-child]:hidden">
           <span>
-            <span className="text-sm text-[#77717f]">◒</span> A little more
-            focused. A little further forward.
+            <span className="text-sm text-faint-foreground">◒</span> A little
+            more focused. A little further forward.
           </span>
           <span>
             {page === "issues"
               ? "Drag issues to update their status"
               : "Build something that matters"}
-            <span className="mx-1 text-[#474750]">·</span> Saved on this device
+            <span className="mx-1 text-faint-foreground">·</span> Saved on this
+            device
           </span>
         </footer>
       </main>

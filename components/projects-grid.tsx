@@ -29,10 +29,10 @@ export default function ProjectsGrid({
           return (
             <button
               key={p.id}
-              className="min-h-[260px] rounded-[9px] border border-[#313137] bg-[#1b1c20] p-[23px] text-left hover:border-[#595260] hover:bg-[#202125] [&_h2]:mt-[21px] [&_h2]:mb-[9px] [&_h2]:text-base [&_h2]:font-medium [&_h2]:tracking-[-.3px] [&>p]:mb-[27px] [&>p]:min-h-10 [&>p]:text-[11px] [&>p]:leading-[1.8] [&>p]:text-[#8e8d9a]"
+              className="min-h-[260px] rounded-[9px] border border-border bg-card p-[23px] text-left hover:border-border-strong hover:bg-hover [&_h2]:mt-[21px] [&_h2]:mb-[9px] [&_h2]:text-base [&_h2]:font-medium [&_h2]:tracking-[-.3px] [&>p]:mb-[27px] [&>p]:min-h-10 [&>p]:text-[11px] [&>p]:leading-[1.8] [&>p]:text-muted-foreground"
               onClick={() => onOpen(p.id)}
             >
-              <div className="flex items-center justify-between text-[#676572]">
+              <div className="flex items-center justify-between text-faint-foreground">
                 <span
                   className="grid size-11 place-items-center rounded-[10px]"
                   style={{ color: p.color, background: p.color + "15" }}
@@ -43,13 +43,13 @@ export default function ProjectsGrid({
               </div>
               <h2>{p.name}</h2>
               <p>{p.description}</p>
-              <div className="flex justify-between text-[10px] text-[#9995a6] [&>span:first-child]:flex [&>span:first-child]:items-center [&>span:first-child]:gap-1.5 [&_i]:size-[5px] [&_i]:rounded-full [&_i]:bg-[#c2a76d]">
+              <div className="flex justify-between text-[10px] text-soft-foreground [&>span:first-child]:flex [&>span:first-child]:items-center [&>span:first-child]:gap-1.5 [&_i]:size-[5px] [&_i]:rounded-full [&_i]:bg-[#c2a76d]">
                 <span>
                   <i /> In progress
                 </span>
                 <span>{p.target}</span>
               </div>
-              <div className="mt-3.5 mb-2.5 h-[3px] overflow-hidden rounded-[3px] bg-[#323138] [&>span]:block [&>span]:h-full">
+              <div className="mt-3.5 mb-2.5 h-[3px] overflow-hidden rounded-[3px] bg-muted [&>span]:block [&>span]:h-full">
                 <span
                   style={{
                     width: `${count ? (done / count) * 100 : 0}%`,
@@ -57,7 +57,7 @@ export default function ProjectsGrid({
                   }}
                 />
               </div>
-              <div className="flex justify-between text-[9px] text-[#777582]">
+              <div className="flex justify-between text-[9px] text-muted-foreground">
                 <span>
                   {done} of {count} issues completed
                 </span>
@@ -67,7 +67,7 @@ export default function ProjectsGrid({
           );
         })}
       <button
-        className="flex min-h-[180px] flex-col items-center justify-center gap-3 rounded-[9px] border border-dashed border-[#39373f] text-xs text-[#a8a1b7] hover:bg-[#1e1d24] [&>span]:text-[10px] [&>span]:text-[#716b7e]"
+        className="flex min-h-[180px] flex-col items-center justify-center gap-3 rounded-[9px] border border-dashed border-border text-xs text-soft-foreground hover:bg-hover [&>span]:text-[10px] [&>span]:text-faint-foreground"
         onClick={() => onCreate()}
       >
         <Plus size={22} /> Create a project
