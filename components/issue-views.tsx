@@ -75,7 +75,7 @@ export default function IssueViews({
                                 "border-[#b4a2e6] shadow-[0_12px_35px_#0007]",
                             )}
                             onClick={() => setEditing(issue)}
-                            aria-label={`${issue.id}: ${issue.title}`}
+                            aria-label={issue.title}
                           >
                             {renderCard(issue)}
                           </div>
@@ -121,7 +121,6 @@ export default function IssueViews({
                 onClick={() => setEditing(i)}
               >
                 <PriorityIcon priority={i.priority} />
-                <span className="text-[#797985]">{i.id}</span>
                 <strong>{i.title}</strong>
                 <IssueLabel label={i.label} className="max-[700px]:hidden" />
                 <IssueAvatar assignee={i.assignee} members={members} />

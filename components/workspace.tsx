@@ -1,7 +1,13 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { IssueAvatar, IssueLabel } from "./issue-meta";
 import ProjectsGrid from "./projects-grid";
@@ -69,7 +75,7 @@ export default function Workspace({
     (i) =>
       (!projectId || i.projectId === projectId) &&
       (!priority || i.priority === priority) &&
-      `${i.title} ${i.id}`.toLowerCase().includes(query.toLowerCase()),
+      i.title.toLowerCase().includes(query.toLowerCase()),
   );
   function createIssue(status: Status = "Todo") {
     setEditing({
@@ -136,8 +142,7 @@ export default function Workspace({
   function renderCard(issue: Issue) {
     return (
       <>
-        <div className="flex items-center justify-between text-[9px] text-[#72727e]">
-          <span>{issue.id}</span>
+        <div className="flex items-center justify-end text-[9px] text-[#72727e]">
           <PriorityIcon priority={issue.priority} />
         </div>
         <h3 className="mt-2.5 mb-[18px] text-xs leading-[1.65] font-[450] tracking-[-.05px] min-[1600px]:text-[13px]">
@@ -395,17 +400,30 @@ export default function Workspace({
           {filters && page === "issues" && (
             <div className="absolute top-12 right-[34px] z-5 grid gap-3 rounded-lg border border-[#42404c] bg-[#25252c] p-4 text-[11px] shadow-[0_12px_30px_#0005]">
               <strong>Filter by priority</strong>
-              <NativeSelect
-                className="h-auto rounded-[5px] bg-muted p-[7px] pr-8 text-[10px] text-[#bcb6cb]"
-                aria-label="Filter priority"
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
+              <Select
+                value={priority || "all"}
+                onValueChange={(v) => setPriority(v === "all" ? "" : v)}
               >
-                <option value="">All priorities</option>
-                {["Urgent", "High", "Medium", "Low", "No priority"].map((p) => (
-                  <option key={p}>{p}</option>
-                ))}
-              </NativeSelect>
+                <SelectTrigger
+                  size="sm"
+                  aria-label="Filter priority"
+                  className="h-auto rounded-[5px] bg-muted p-[7px] text-[10px] text-[#bcb6cb]"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="text-xs">
+                    All priorities
+                  </SelectItem>
+                  {["Urgent", "High", "Medium", "Low", "No priority"].map(
+                    (p) => (
+                      <SelectItem key={p} value={p} className="text-xs">
+                        {p}
+                      </SelectItem>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           )}
         </div>

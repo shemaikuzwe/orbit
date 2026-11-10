@@ -1,23 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { eq, useLiveQuery } from "@tanstack/react-db";
 import { Loader2 } from "lucide-react";
 import { Toaster, toast } from "sonner";
-import { z } from "zod";
-
-const offlineSessionSchema = z.object({
-  user: z.object({ id: z.string(), name: z.string() }),
-  session: z.object({
-    activeOrganizationId: z.string().nullish(),
-    expiresAt: z.coerce.date(),
-  }),
-});
+import { useSession } from "@/components/session-provider";
 import { authClient } from "@/lib/auth-client";
 import { initializeSync, signOut, type WorkspaceSync } from "@/lib/sync";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SignIn } from "./sign-in";
 import Workspace from "./workspace";
 
 function LoadingWorkspace() {
@@ -57,6 +49,7 @@ function TeamWorkspace({
       .from({ member: sync.memberships })
       .where(({ member }) => eq(member.user_id, userId)),
   );
+  const router = useRouter();
   const [createdTeam, setCreatedTeam] = useState<string>();
   const [pending, setPending] = useState(false);
   const teamId = createdTeam ?? activeTeamId ?? memberships[0]?.team_id;
@@ -65,6 +58,7 @@ function TeamWorkspace({
     setPending(true);
     try {
       await signOut();
+      router.replace("/sign-in");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Unable to sign out",
@@ -146,57 +140,13 @@ function TeamWorkspace({
 }
 
 export default function WorkspaceGate() {
-  const {
-    data: liveSession,
-    isPending,
-    error: sessionError,
-  } = authClient.useSession();
-  const [offline, setOffline] = useState(false);
-  const [offlineSession, setOfflineSession] =
-    useState<z.infer<typeof offlineSessionSchema>>();
-  useEffect(() => {
-    function updateConnection() {
-      setOffline(!navigator.onLine);
-    }
-    updateConnection();
-    window.addEventListener("online", updateConnection);
-    window.addEventListener("offline", updateConnection);
-    try {
-      const stored = localStorage.getItem("orbit-offline-session");
-      if (stored) {
-        const cached = offlineSessionSchema.safeParse(JSON.parse(stored));
-        if (cached.success && cached.data.session.expiresAt > new Date())
-          setOfflineSession(cached.data);
-      }
-    } catch {
-      localStorage.removeItem("orbit-offline-session");
-    }
-    return () => {
-      window.removeEventListener("online", updateConnection);
-      window.removeEventListener("offline", updateConnection);
-    };
-  }, []);
-  useEffect(() => {
-    if (liveSession) {
-      // Cache only display identity, team selection, and expiry, never tokens.
-      const cached = offlineSessionSchema.parse(liveSession);
-      localStorage.setItem("orbit-offline-session", JSON.stringify(cached));
-      setOfflineSession(cached);
-    } else if (!isPending && navigator.onLine && !sessionError) {
-      localStorage.removeItem("orbit-offline-session");
-      setOfflineSession(undefined);
-    }
-  }, [liveSession, isPending, offline, sessionError]);
-  const session = liveSession ?? (offline ? offlineSession : undefined);
-  const userId = session?.user.id;
+  // The proxy only renders this page with a valid session.
+  const session = useSession()!;
+  const userId = session.user.id;
   const [ready, setReady] = useState<{ userId: string; sync: WorkspaceSync }>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    if (!userId) {
-      setReady(undefined);
-      return;
-    }
     let cancelled = false;
     initializeSync(userId)
       .then((sync) => {
@@ -221,11 +171,7 @@ export default function WorkspaceGate() {
   return (
     <>
       <Toaster richColors theme="dark" />
-      {isPending && !session ? (
-        <LoadingWorkspace />
-      ) : !session ? (
-        <SignIn />
-      ) : ready?.userId === session.user.id ? (
+      {ready?.userId === userId ? (
         <TeamWorkspace
           key={session.user.id}
           sync={ready.sync}

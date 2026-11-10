@@ -54,19 +54,28 @@ const connector: PowerSyncBackendConnector = {
   async uploadData(database) {
     const batch = await database.getNextCrudTransaction();
     if (!batch) return;
+    // CrudEntry.toJSON() renames fields (table -> type, opData -> data), so map
+    // explicitly to the shape /api/sync/upload validates.
+    const crud = batch.crud.map(({ table, id, op, opData }) => ({
+      table,
+      id,
+      op,
+      opData,
+    }));
     const response = await fetch("/api/sync/upload", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ crud: batch.crud }),
+      body: JSON.stringify({ crud }),
     });
     if (!response.ok)
       throw new Error(`Sync upload failed (${response.status})`);
     const { rejected } = uploadResponse.parse(await response.json());
     await batch.complete();
     for (const rejection of rejected) {
-      toast.error(
-        `Your change to ${rejection.id} was dropped: ${rejection.reason}`,
-      );
+      console.error("Sync change rejected", rejection);
+      toast.error("Couldn't save your change", {
+        description: rejection.reason,
+      });
     }
   },
 };
@@ -158,7 +167,6 @@ export async function signOut() {
   const result = await authClient.signOut();
   if (result.error) throw new Error(result.error.message || "Sign out failed");
   localStorage.removeItem("orbit-user");
-  localStorage.removeItem("orbit-offline-session");
 }
 
 export function getSync() {

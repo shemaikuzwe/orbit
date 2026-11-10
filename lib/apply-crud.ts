@@ -68,9 +68,15 @@ export async function applyCrud(
       }
 
       const schema = op.table === "projects" ? projectFields : issueFields;
-      const fields = (op.op === "PATCH" ? schema.partial() : schema).parse(
-        op.opData,
-      );
+      // PowerSync omits null columns from PUT data, so a missing key means null.
+      const omitted =
+        op.op === "PUT"
+          ? Object.fromEntries(Object.keys(schema.shape).map((k) => [k, null]))
+          : {};
+      const fields = (op.op === "PATCH" ? schema.partial() : schema).parse({
+        ...omitted,
+        ...op.opData,
+      });
       const data = (
         op.table === "projects" ? projectSchema : issueSchema
       ).parse({

@@ -1,5 +1,11 @@
 "use client";
-import { NativeSelect } from "@/components/ui/native-select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,10 +16,45 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-import { X, Trash2, ChevronRight, Loader2 } from "lucide-react";
+import { X, Trash2, Loader2 } from "lucide-react";
 import type { Issue, Project, Priority } from "@/lib/workspace";
 import { statuses, priorities } from "@/lib/domain";
 import type { WorkspaceMember } from "@/lib/use-workspace";
+
+// Radix Select items can't use "" as a value, so empty fields use this sentinel.
+const NONE = "none";
+
+function IssueSelect({
+  name,
+  label,
+  defaultValue,
+  options,
+}: {
+  name: string;
+  label: string;
+  defaultValue: string;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <Select name={name} defaultValue={defaultValue || NONE}>
+      <SelectTrigger
+        size="sm"
+        aria-label={label}
+        className="h-auto rounded-[5px] bg-muted p-[7px] text-[10px] text-[#bcb6cb]"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value} className="text-xs">
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export default function IssueDialog({
   issue,
   projects,
@@ -45,7 +86,7 @@ export default function IssueDialog({
         className="w-[720px] max-w-[calc(100%-32px)] gap-0 overflow-hidden rounded-[11px] border-[#424049] bg-popover p-0 shadow-[0_30px_120px_#0009] sm:max-w-[720px]"
       >
         <DialogTitle className="sr-only">
-          {existing ? issue.id : "New issue"}
+          {existing ? "Edit issue" : "New issue"}
         </DialogTitle>
         <DialogDescription className="sr-only">
           Edit issue details, status, priority, and project.
@@ -56,24 +97,21 @@ export default function IssueDialog({
             e.preventDefault();
             if (pending) return;
             const data = new FormData(e.currentTarget);
+            const optional = (v: FormDataEntryValue | null) =>
+              v === NONE ? "" : String(v);
             onSave({
               ...issue,
               title: String(data.get("title")).trim(),
               description: String(data.get("description")),
               status: data.get("status") as Issue["status"],
               priority: data.get("priority") as Priority,
-              projectId: String(data.get("projectId")),
-              assignee: String(data.get("assignee")),
+              projectId: optional(data.get("projectId")),
+              assignee: optional(data.get("assignee")),
               label: String(data.get("label")),
             });
           }}
         >
           <div className="flex h-[59px] items-center gap-[9px] border-b border-[#313037] px-[23px] text-[11px] text-[#a8a3b6]">
-            <span className="inline-grid size-[18px] place-items-center rounded border border-[#494259] bg-[#333043] text-[10px] font-semibold text-[#c1b4e7]">
-              O
-            </span>{" "}
-            Orbit <ChevronRight size={13} />
-            <span>{existing ? issue.id : "New issue"}</span>
             <Button
               variant="ghost"
               size="none"
@@ -104,68 +142,52 @@ export default function IssueDialog({
               defaultValue={issue.description}
             />
             <fieldset disabled={pending} className="flex flex-wrap gap-2">
-              <NativeSelect
-                className="h-auto rounded-[5px] bg-muted p-[7px] pr-8 text-[10px] text-[#bcb6cb]"
-                aria-label="Status"
+              <IssueSelect
                 name="status"
+                label="Status"
                 defaultValue={issue.status}
-              >
-                {statuses.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </NativeSelect>
-              <NativeSelect
-                className="h-auto rounded-[5px] bg-muted p-[7px] pr-8 text-[10px] text-[#bcb6cb]"
-                aria-label="Priority"
+                options={statuses.map((s) => ({ value: s, label: s }))}
+              />
+              <IssueSelect
                 name="priority"
+                label="Priority"
                 defaultValue={issue.priority}
-              >
-                {priorities.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </NativeSelect>
-              <NativeSelect
-                className="h-auto rounded-[5px] bg-muted p-[7px] pr-8 text-[10px] text-[#bcb6cb]"
-                aria-label="Assignee"
+                options={priorities.map((s) => ({ value: s, label: s }))}
+              />
+              <IssueSelect
                 name="assignee"
+                label="Assignee"
                 defaultValue={issue.assignee}
-              >
-                <option value="">Unassigned</option>
-                {issue.assignee &&
-                  !members.some((member) => member.id === issue.assignee) && (
-                    <option value={issue.assignee}>Team member</option>
-                  )}
-                {members.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name}
-                  </option>
-                ))}
-              </NativeSelect>
-              <NativeSelect
-                className="h-auto rounded-[5px] bg-muted p-[7px] pr-8 text-[10px] text-[#bcb6cb]"
-                aria-label="Project"
+                options={[
+                  { value: NONE, label: "Unassigned" },
+                  ...(issue.assignee &&
+                  !members.some((member) => member.id === issue.assignee)
+                    ? [{ value: issue.assignee, label: "Team member" }]
+                    : []),
+                  ...members.map((m) => ({ value: m.id, label: m.name })),
+                ]}
+              />
+              <IssueSelect
                 name="projectId"
+                label="Project"
                 defaultValue={issue.projectId}
-              >
-                <option value="">No project</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </NativeSelect>
-              <NativeSelect
-                className="h-auto rounded-[5px] bg-muted p-[7px] pr-8 text-[10px] text-[#bcb6cb]"
-                aria-label="Label"
+                options={[
+                  { value: NONE, label: "No project" },
+                  ...projects.map((p) => ({ value: p.id, label: p.name })),
+                ]}
+              />
+              <IssueSelect
                 name="label"
+                label="Label"
                 defaultValue={issue.label}
-              >
-                {["Feature", "Design", "Improvement", "Research", "Bug"].map(
-                  (s) => (
-                    <option key={s}>{s}</option>
-                  ),
-                )}
-              </NativeSelect>
+                options={[
+                  "Feature",
+                  "Design",
+                  "Improvement",
+                  "Research",
+                  "Bug",
+                ].map((s) => ({ value: s, label: s }))}
+              />
             </fieldset>
           </div>
           <footer className="flex items-center justify-end gap-3 border-t border-[#333139] px-[23px] py-4 [&>span]:mr-auto [&>span]:text-[10px] [&>span]:text-[#77727f] max-[700px]:[&>span]:hidden">
