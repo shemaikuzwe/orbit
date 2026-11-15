@@ -40,6 +40,12 @@ export const auth = betterAuth({
   // Keep auth IDs as text for sync foreign keys while generating UUID values.
   advanced: { database: { generateId: () => randomUUID() } },
   emailAndPassword: { enabled: true },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
+  },
   plugins: [
     organization({
       organizationHooks: {

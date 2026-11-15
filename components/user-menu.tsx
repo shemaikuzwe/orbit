@@ -1,7 +1,7 @@
 "use client";
 import { useTheme } from "next-themes";
 import { LogOut, Monitor, Moon, Sun } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar } from "./issue-meta";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,32 +20,27 @@ const themes = [
 ];
 
 export function UserMenu({
+  id,
   name,
   onSignOut,
   signingOut,
 }: {
+  id: string;
   name: string;
   onSignOut: () => Promise<void>;
   signingOut: boolean;
 }) {
   const { theme, setTheme } = useTheme();
-  const initials = name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="rounded-full" aria-label="Open user menu">
-        <Avatar>
-          <AvatarFallback className="text-xs font-semibold">
-            {initials || "?"}
-          </AvatarFallback>
-        </Avatar>
+      <DropdownMenuTrigger
+        className="flex h-8 w-full items-center gap-2 rounded-md px-2 text-left text-[13px] hover:bg-hover"
+        aria-label="Open user menu"
+      >
+        <Avatar id={id} name={name} />
+        <span className="truncate">{name}</span>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent align="start" side="top" className="w-48">
         <DropdownMenuLabel className="truncate">{name}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">

@@ -5,7 +5,7 @@ import { generateNKeysBetween } from "fractional-indexing";
 
 async function seed() {
   const email = "user@orbit.com";
-  const password = "d432e9fa3cf0"
+  const password = "d432e9fa3cf0";
   const { db, pool } = await import("./index");
   try {
     const { auth } = await import("../lib/auth");
@@ -64,8 +64,12 @@ async function seed() {
         .insert(projects)
         .values(
           seedData.projects.map((project) => ({
-            ...project,
             id: projectIds.get(project.id)!,
+            name: project.name,
+            description: project.description,
+            color: project.color,
+            target: project.target,
+            health: project.health,
             team_id: team.id,
           })),
         )
@@ -84,6 +88,7 @@ async function seed() {
             label: issue.label,
             assignee_id: issue.assignee ? demoUser.id : null,
             position: positions[index],
+            number: index + 1,
           })),
         )
         .onConflictDoNothing();

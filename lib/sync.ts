@@ -12,7 +12,13 @@ import { powerSyncCollectionOptions } from "@tanstack/powersync-db-collection";
 import { z } from "zod";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
-import { issueSchema, projectSchema } from "@/lib/domain";
+import {
+  commentSchema,
+  issueEventSchema,
+  issueSchema,
+  notificationSchema,
+  projectSchema,
+} from "@/lib/domain";
 
 const schema = new Schema({
   projects: new Table({
@@ -21,6 +27,8 @@ const schema = new Schema({
     description: column.text,
     color: column.text,
     target: column.text,
+    health: column.text,
+    lead_id: column.text,
   }),
   issues: new Table({
     team_id: column.text,
@@ -32,7 +40,37 @@ const schema = new Schema({
     label: column.text,
     assignee_id: column.text,
     position: column.text,
+    due_date: column.text,
+    parent_id: column.text,
+    number: column.integer,
+    creator_id: column.text,
   }),
+  comments: new Table({
+    team_id: column.text,
+    issue_id: column.text,
+    author_id: column.text,
+    body: column.text,
+    created_at: column.text,
+  }),
+  issue_events: new Table({
+    team_id: column.text,
+    issue_id: column.text,
+    actor_id: column.text,
+    field: column.text,
+    from_value: column.text,
+    to_value: column.text,
+    created_at: column.text,
+  }),
+  notifications: new Table({
+    team_id: column.text,
+    user_id: column.text,
+    issue_id: column.text,
+    actor_id: column.text,
+    kind: column.text,
+    read_at: column.text,
+    created_at: column.text,
+  }),
+  teams: new Table({ name: column.text }),
   team_members: new Table({ team_id: column.text, user_id: column.text }),
   user: new Table({ name: column.text }),
 });
@@ -128,7 +166,49 @@ function createSync() {
       onDeserializationError,
     }),
   );
-  return { database, projects, issues, memberships, profiles };
+  const comments = createCollection(
+    powerSyncCollectionOptions({
+      database,
+      table: schema.props.comments,
+      schema: commentSchema,
+      onDeserializationError,
+    }),
+  );
+  const events = createCollection(
+    powerSyncCollectionOptions({
+      database,
+      table: schema.props.issue_events,
+      schema: issueEventSchema,
+      onDeserializationError,
+    }),
+  );
+  const notifications = createCollection(
+    powerSyncCollectionOptions({
+      database,
+      table: schema.props.notifications,
+      schema: notificationSchema,
+      onDeserializationError,
+    }),
+  );
+  const teams = createCollection(
+    powerSyncCollectionOptions({
+      database,
+      table: schema.props.teams,
+      schema: z.object({ id: z.string(), name: z.string() }),
+      onDeserializationError,
+    }),
+  );
+  return {
+    database,
+    projects,
+    issues,
+    memberships,
+    profiles,
+    comments,
+    events,
+    notifications,
+    teams,
+  };
 }
 
 export type WorkspaceSync = ReturnType<typeof createSync>;

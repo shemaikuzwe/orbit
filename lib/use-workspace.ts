@@ -2,21 +2,33 @@
 
 import { eq, useLiveQuery } from "@tanstack/react-db";
 import { getSync } from "@/lib/sync";
-import { issueSchema, projectSchema } from "@/lib/domain";
+import { commentSchema, issueSchema, projectSchema } from "@/lib/domain";
 import type { Issue, Project, Status } from "@/lib/workspace";
+import { parseTimestamp } from "@/lib/utils";
 
 import { generateKeyBetween } from "fractional-indexing";
 
 export type WorkspaceMember = { id: string; name: string };
+export type Workspace = ReturnType<typeof useWorkspace>;
 
-export function useWorkspace(teamId: string) {
+// "Acme Labs" -> "ACM"; used as the prefix of issue identifiers.
+function teamKey(name: string) {
+  return (
+    name
+      .replace(/[^a-z0-9]/gi, "")
+      .slice(0, 3)
+      .toUpperCase() || "ISS"
+  );
+}
+
+export function useWorkspace(teamId: string, userId: string) {
   const sync = getSync();
   const { data: rawIssues = [] } = useLiveQuery((q) =>
     q
       .from({ issue: sync.issues })
       .where(({ issue }) => eq(issue.team_id, teamId)),
   );
-  const { data: projects = [] } = useLiveQuery((q) =>
+  const { data: rawProjects = [] } = useLiveQuery((q) =>
     q
       .from({ project: sync.projects })
       .where(({ project }) => eq(project.team_id, teamId)),
@@ -29,6 +41,16 @@ export function useWorkspace(teamId: string) {
   const { data: profiles = [] } = useLiveQuery((q) =>
     q.from({ profile: sync.profiles }),
   );
+  const { data: teams = [] } = useLiveQuery((q) =>
+    q.from({ team: sync.teams }).where(({ team }) => eq(team.id, teamId)),
+  );
+  const { data: rawNotifications = [] } = useLiveQuery((q) =>
+    q
+      .from({ notification: sync.notifications })
+      .where(({ notification }) => eq(notification.team_id, teamId)),
+  );
+  const teamName = teams[0]?.name ?? "Workspace";
+  const key = teamKey(teamName);
   const ordered = [...rawIssues].sort((a, b) =>
     a.position < b.position
       ? -1
@@ -44,6 +66,13 @@ export function useWorkspace(teamId: string) {
     ...issue,
     projectId: issue.project_id ?? "",
     assignee: issue.assignee_id ?? "",
+    dueDate: issue.due_date ?? "",
+    parentId: issue.parent_id ?? "",
+    identifier: issue.number ? `${key}-${issue.number}` : "",
+  }));
+  const projects: Project[] = rawProjects.map((project) => ({
+    ...project,
+    leadId: project.lead_id ?? "",
   }));
   const members: WorkspaceMember[] = memberships.map((member) => ({
     id: member.user_id,
@@ -51,6 +80,9 @@ export function useWorkspace(teamId: string) {
       profiles.find((profile) => profile.id === member.user_id)?.name ??
       "Team member",
   }));
+  const notifications = [...rawNotifications].sort(
+    (a, b) => parseTimestamp(b.created_at) - parseTimestamp(a.created_at),
+  );
 
   async function saveIssue(issue: Issue) {
     const existing = sync.issues.get(issue.id);
@@ -73,6 +105,10 @@ export function useWorkspace(teamId: string) {
         existing?.status === issue.status
           ? existing.position
           : generateKeyBetween(last?.position ?? null, null),
+      due_date: issue.dueDate || null,
+      parent_id: issue.parentId || null,
+      number: existing?.number ?? null,
+      creator_id: existing ? existing.creator_id : userId,
     });
     const transaction = existing
       ? sync.issues.update(issue.id, (draft) => {
@@ -111,19 +147,75 @@ export function useWorkspace(teamId: string) {
       .when("settled");
   }
 
-  async function createProject(project: Project) {
-    await sync.projects
-      .insert(projectSchema.parse({ ...project, team_id: teamId }))
+  async function saveProject(project: Project) {
+    const row = projectSchema.parse({
+      ...project,
+      team_id: teamId,
+      lead_id: project.leadId || null,
+    });
+    const transaction = sync.projects.get(project.id)
+      ? sync.projects.update(project.id, (draft) => {
+          Object.assign(draft, row);
+        })
+      : sync.projects.insert(row);
+    await transaction.when("settled");
+  }
+
+  async function addComment(issueId: string, body: string) {
+    await sync.comments
+      .insert(
+        commentSchema.parse({
+          id: crypto.randomUUID(),
+          team_id: teamId,
+          issue_id: issueId,
+          author_id: userId,
+          body,
+          created_at: new Date().toISOString(),
+        }),
+      )
+      .when("settled");
+  }
+
+  async function markRead(ids: string[]) {
+    if (!ids.length) return;
+    const now = new Date().toISOString();
+    await sync.notifications
+      .update(ids, (drafts) => {
+        for (const draft of drafts) draft.read_at = now;
+      })
       .when("settled");
   }
 
   return {
+    teamName,
     issues,
     projects,
     members,
+    notifications,
     saveIssue,
     deleteIssue,
     moveIssue,
-    createProject,
+    saveProject,
+    addComment,
+    markRead,
   };
+}
+
+/** Comments and history for one issue, merged oldest first. */
+export function useIssueActivity(issueId: string) {
+  const sync = getSync();
+  const { data: comments = [] } = useLiveQuery((q) =>
+    q
+      .from({ comment: sync.comments })
+      .where(({ comment }) => eq(comment.issue_id, issueId)),
+  );
+  const { data: events = [] } = useLiveQuery((q) =>
+    q
+      .from({ event: sync.events })
+      .where(({ event }) => eq(event.issue_id, issueId)),
+  );
+  return [
+    ...comments.map((comment) => ({ type: "comment" as const, ...comment })),
+    ...events.map((event) => ({ type: "event" as const, ...event })),
+  ].sort((a, b) => parseTimestamp(a.created_at) - parseTimestamp(b.created_at));
 }

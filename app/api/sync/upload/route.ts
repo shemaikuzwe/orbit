@@ -27,7 +27,10 @@ export async function POST(request: Request) {
     const rejected = await db.transaction(async (tx) => {
       const rejected: NonNullable<Awaited<ReturnType<typeof applyCrud>>>[] = [];
       for (const op of batch.data.crud) {
-        const rejection = await applyCrud(tx, op, teamIds);
+        const rejection = await applyCrud(tx, op, {
+          userId: session.user.id,
+          teamIds,
+        });
         if (rejection) rejected.push(rejection);
       }
       return rejected;

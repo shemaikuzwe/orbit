@@ -1,42 +1,65 @@
-import { cn } from "@/lib/utils";
+import { cn, formatDate, initials, isOverdue } from "@/lib/utils";
 import type { WorkspaceMember } from "@/lib/use-workspace";
-const labelColors: Record<string, string> = {
-  Feature: "text-soft-foreground [&>i]:bg-[#b69add]",
-  Design: "text-soft-foreground [&>i]:bg-[#db9c9f]",
-  Improvement: "text-soft-foreground [&>i]:bg-[#90b7bc]",
-  Research: "text-soft-foreground [&>i]:bg-[#c5b17e]",
-  Bug: "text-soft-foreground [&>i]:bg-[#e88680]",
+export const labelColors: Record<string, string> = {
+  Feature: "#b69add",
+  Design: "#db9c9f",
+  Improvement: "#90b7bc",
+  Research: "#c5b17e",
+  Bug: "#e88680",
 };
-export function IssueAvatar({
-  assignee,
-  members = [],
-  small = false,
+const avatarColors = ["#b5a5ef", "#8fc7b3", "#e8b48a", "#90b7bc", "#db9c9f"];
+
+export function Avatar({
+  id,
+  name,
+  className,
 }: {
-  assignee: string;
-  members?: WorkspaceMember[];
-  small?: boolean;
+  id: string;
+  name: string;
+  className?: string;
 }) {
-  const name = members.find((member) => member.id === assignee)?.name;
-  const initials = name
-    ?.trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
+  // A stable color per user keeps people recognizable across views.
+  const hash = [...id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return (
     <span
-      title={name || (assignee ? "Team member" : "Unassigned")}
-      aria-label={name || (assignee ? "Team member" : "Unassigned")}
+      title={name}
+      aria-label={name}
       className={cn(
-        "inline-flex size-[23px] shrink-0 items-center justify-center rounded-full border border-border bg-secondary text-[8px] font-semibold text-soft-foreground",
-        small && "size-5 text-[7px]",
+        "inline-grid size-[18px] shrink-0 place-items-center rounded-full text-[8px] font-semibold text-[#17171a]",
+        className,
       )}
+      style={{ background: avatarColors[hash % avatarColors.length] }}
     >
-      {initials || (assignee ? "?" : "–")}
+      {initials(name) || "?"}
     </span>
   );
 }
+
+export function IssueAvatar({
+  assignee,
+  members = [],
+  className,
+}: {
+  assignee: string;
+  members?: WorkspaceMember[];
+  className?: string;
+}) {
+  if (!assignee)
+    return (
+      <span
+        title="Unassigned"
+        aria-label="Unassigned"
+        className={cn(
+          "inline-block size-[18px] shrink-0 rounded-full border border-dashed border-border-strong",
+          className,
+        )}
+      />
+    );
+  const name =
+    members.find((member) => member.id === assignee)?.name ?? "Team member";
+  return <Avatar id={assignee} name={name} className={className} />;
+}
+
 export function IssueLabel({
   label,
   className,
@@ -47,13 +70,37 @@ export function IssueLabel({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-[5px] whitespace-nowrap rounded border border-border px-[5px] py-0.5 text-[9px] [&>i]:size-1 [&>i]:rounded-full",
-        labelColors[label],
+        "inline-flex items-center gap-1.5 text-[11px] whitespace-nowrap text-muted-foreground",
         className,
       )}
     >
-      <i />
+      <i
+        className="size-1.5 rounded-full"
+        style={{ background: labelColors[label] ?? "var(--faint-foreground)" }}
+      />
       {label}
+    </span>
+  );
+}
+
+export function DueDate({
+  date,
+  className,
+}: {
+  date: string;
+  className?: string;
+}) {
+  if (!date) return null;
+  return (
+    <span
+      title={isOverdue(date) ? "Overdue" : "Due date"}
+      className={cn(
+        "text-[11px] whitespace-nowrap text-muted-foreground",
+        isOverdue(date) && "text-destructive",
+        className,
+      )}
+    >
+      {formatDate(date)}
     </span>
   );
 }

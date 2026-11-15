@@ -5,60 +5,141 @@ import {
   Droppable,
   type DropResult,
 } from "@hello-pangea/dnd";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { IssueAvatar, IssueLabel } from "./issue-meta";
-import { Plus } from "lucide-react";
 import type { Issue, Status } from "@/lib/workspace";
 import { statuses } from "@/lib/domain";
 import type { WorkspaceMember } from "@/lib/use-workspace";
+import { DueDate, IssueAvatar, IssueLabel } from "./issue-meta";
 import { StatusIcon, PriorityIcon } from "./issue-icons";
+
+// Scrolls a keyboard-selected row into view without moving visible ones.
+const reveal = (element: HTMLElement | null) =>
+  element?.scrollIntoView({ block: "nearest" });
+
+function Identifier({ issue }: { issue: Issue }) {
+  return (
+    <span className="w-14 shrink-0 text-[11px] text-faint-foreground tabular-nums">
+      {issue.identifier || "—"}
+    </span>
+  );
+}
+
+export function EmptyState({ onCreate }: { onCreate: () => void }) {
+  return (
+    <div className="m-6 flex flex-1 flex-col items-center justify-center gap-2.5 rounded-xl border border-dashed p-10 text-center">
+      <span className="grid size-9 place-items-center rounded-lg bg-primary text-lg text-primary-foreground">
+        ◒
+      </span>
+      <h2 className="text-sm font-semibold">No issues yet</h2>
+      <p className="max-w-[28ch] text-[13px] leading-relaxed text-muted-foreground">
+        Issues are the unit of work. Create the first one to start your board.
+      </p>
+      <Button className="mt-1" onClick={onCreate}>
+        Create issue
+        <kbd className="rounded-[3px] border border-primary-foreground/30 px-1 text-primary-foreground/70">
+          C
+        </kbd>
+      </Button>
+      <p className="text-[11px] text-muted-foreground">
+        or press <kbd className="rounded-[3px] border px-1">⌘K</kbd> for
+        everything else
+      </p>
+    </div>
+  );
+}
+
 export default function IssueViews({
   view,
   members,
   issues,
+  selectedId,
   dragEnd,
   createIssue,
-  setEditing,
-  renderCard,
+  onSelect,
 }: {
   view: "board" | "list";
   issues: Issue[];
   members: WorkspaceMember[];
+  selectedId: string;
   dragEnd: (result: DropResult) => void;
   createIssue: (status?: Status) => void;
-  setEditing: (issue: Issue) => void;
-  renderCard: (issue: Issue) => React.ReactNode;
+  onSelect: (issue: Issue) => void;
 }) {
-  return view === "board" ? (
-    <DragDropContext onDragEnd={dragEnd}>
-      <div className="grid flex-1 grid-cols-[repeat(4,minmax(210px,1fr))] content-start gap-[21px] overflow-auto px-8 pt-[25px] pb-10 min-[1600px]:gap-[26px] max-[1200px]:grid-cols-[repeat(4,230px)] max-[1200px]:gap-3.5 max-[1200px]:p-[23px] max-[700px]:grid-cols-[repeat(4,250px)] max-[700px]:px-5 max-[700px]:py-[22px]">
-        {statuses.map((status) => (
-          <section className="min-w-0" key={status}>
-            <div className="mx-[3px] mb-[17px] flex items-center gap-2 [&>h2]:text-[11px] [&>h2]:font-[550] [&>span]:ml-[3px] [&>span]:text-[10px] [&>span]:text-faint-foreground [&>button]:ml-auto">
-              <StatusIcon status={status} />
-              <h2>{status}</h2>
-              <span>{issues.filter((i) => i.status === status).length}</span>
-              <Button
-                variant="ghost"
-                size="none"
-                className="inline-flex size-[25px] items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                onClick={() => createIssue(status)}
-                aria-label={`Add issue to ${status}`}
-              >
-                <Plus size={15} />
-              </Button>
-            </div>
-            <Droppable droppableId={status}>
-              {(provided) => (
-                <div
-                  className="min-h-60"
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
+  if (view === "list")
+    return (
+      <div className="flex-1 pb-10">
+        {issues.length === 0 && (
+          <p className="p-6 text-[13px] text-muted-foreground">
+            No issues match these filters.
+          </p>
+        )}
+        {statuses.map((status) => {
+          const group = issues.filter((i) => i.status === status);
+          if (!group.length) return null;
+          return (
+            <section key={status}>
+              <h2 className="sticky top-0 z-1 flex h-8 items-center gap-2 border-b bg-card px-4 text-xs font-medium">
+                <StatusIcon status={status} />
+                {status}
+                <span className="font-normal text-muted-foreground">
+                  {group.length}
+                </span>
+              </h2>
+              {group.map((issue) => (
+                <button
+                  type="button"
+                  key={issue.id}
+                  ref={issue.id === selectedId ? reveal : undefined}
+                  aria-current={issue.id === selectedId || undefined}
+                  className="flex h-9 w-full items-center gap-2.5 border-b px-4 text-left text-[13px] hover:bg-hover aria-[current]:bg-accent"
+                  onClick={() => onSelect(issue)}
                 >
-                  {issues
-                    .filter((i) => i.status === status)
-                    .map((issue, index) => (
+                  <PriorityIcon priority={issue.priority} />
+                  <Identifier issue={issue} />
+                  <span className="min-w-0 flex-1 truncate">{issue.title}</span>
+                  <IssueLabel label={issue.label} className="max-lg:hidden" />
+                  <DueDate date={issue.dueDate} className="max-sm:hidden" />
+                  <IssueAvatar assignee={issue.assignee} members={members} />
+                </button>
+              ))}
+            </section>
+          );
+        })}
+      </div>
+    );
+
+  return (
+    <DragDropContext onDragEnd={dragEnd}>
+      <div className="grid flex-1 auto-cols-[minmax(240px,1fr)] grid-flow-col content-start gap-3 overflow-x-auto p-4">
+        {statuses.map((status) => {
+          const column = issues.filter((i) => i.status === status);
+          return (
+            <section className="min-w-0" key={status}>
+              <div className="mb-2 flex h-7 items-center gap-2 px-1 text-xs font-medium">
+                <StatusIcon status={status} />
+                <h2>{status}</h2>
+                <span className="font-normal text-muted-foreground">
+                  {column.length}
+                </span>
+                <button
+                  type="button"
+                  className="ml-auto grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-hover hover:text-foreground"
+                  onClick={() => createIssue(status)}
+                  aria-label={`Add issue to ${status}`}
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+              <Droppable droppableId={status}>
+                {(provided) => (
+                  <div
+                    className="min-h-40"
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                  >
+                    {column.map((issue, index) => (
                       <Draggable
                         draggableId={issue.id}
                         index={index}
@@ -70,64 +151,48 @@ export default function IssueViews({
                             {...drag.draggableProps}
                             {...drag.dragHandleProps}
                             className={cn(
-                              "mb-2.5 min-h-[123px] rounded-[7px] border border-border bg-card px-[13px] pt-[13px] pb-3 shadow-[0_2px_3px_#00000014] transition-colors hover:border-border-strong hover:bg-hover min-[1600px]:min-h-[140px] min-[1600px]:p-[17px]",
+                              "mb-1.5 rounded-lg border bg-card p-2.5 shadow-[0_1px_2px_#0000000d] hover:border-border-strong",
+                              issue.id === selectedId && "border-ring",
+                              status === "Done" && "opacity-70",
                               snapshot.isDragging &&
-                                "border-primary shadow-[0_12px_35px_#0007]",
+                                "border-primary shadow-[0_12px_35px_#0005]",
                             )}
-                            onClick={() => setEditing(issue)}
+                            onClick={() => onSelect(issue)}
                             aria-label={issue.title}
                           >
-                            {renderCard(issue)}
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] text-faint-foreground tabular-nums">
+                                {issue.identifier || "Syncing…"}
+                              </span>
+                              <span className="flex-1" />
+                              <PriorityIcon priority={issue.priority} />
+                              <IssueAvatar
+                                assignee={issue.assignee}
+                                members={members}
+                              />
+                            </div>
+                            <h3 className="mt-1.5 mb-2 text-[13px] leading-snug font-medium">
+                              {issue.title}
+                            </h3>
+                            <div className="flex items-center gap-2">
+                              <IssueLabel label={issue.label} />
+                              <DueDate
+                                date={issue.dueDate}
+                                className="ml-auto"
+                              />
+                            </div>
                           </div>
                         )}
                       </Draggable>
                     ))}
-                  {provided.placeholder}
-                  <Button
-                    variant="ghost"
-                    size="none"
-                    className="flex w-full items-center justify-start gap-[7px] rounded-[5px] p-2 text-[10px] text-faint-foreground hover:bg-hover hover:text-soft-foreground"
-                    onClick={() => createIssue(status)}
-                  >
-                    <Plus size={14} /> Add issue
-                  </Button>
-                </div>
-              )}
-            </Droppable>
-          </section>
-        ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </section>
+          );
+        })}
       </div>
     </DragDropContext>
-  ) : (
-    <div className="flex-1 px-[34px] py-[22px]">
-      {issues.length === 0 && (
-        <p className="p-5 text-soft-foreground">No issues match your search.</p>
-      )}
-      {statuses.map((status) => (
-        <section key={status}>
-          <div className="mt-2 flex gap-[9px] bg-card px-2.5 py-3 text-[11px] [&>span]:ml-1 [&>span]:text-muted-foreground">
-            <StatusIcon status={status} />
-            {status}
-            <span>{issues.filter((i) => i.status === status).length}</span>
-          </div>
-          {issues
-            .filter((i) => i.status === status)
-            .map((i) => (
-              <Button
-                variant="ghost"
-                size="none"
-                className="flex w-full items-center justify-start gap-[15px] rounded-none border-b border-border px-2.5 py-3.5 text-left text-[11px] hover:bg-hover max-[700px]:gap-[9px] [&>strong]:flex-1 [&>strong]:font-[450]"
-                key={i.id}
-                onClick={() => setEditing(i)}
-              >
-                <PriorityIcon priority={i.priority} />
-                <strong>{i.title}</strong>
-                <IssueLabel label={i.label} className="max-[700px]:hidden" />
-                <IssueAvatar assignee={i.assignee} members={members} />
-              </Button>
-            ))}
-        </section>
-      ))}
-    </div>
   );
 }

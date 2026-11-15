@@ -1,40 +1,43 @@
 "use client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { IssueAvatar, IssueLabel } from "./issue-meta";
-import ProjectsGrid from "./projects-grid";
-import IssueViews from "./issue-views";
-import ProjectDialog from "./project-dialog";
-import { PriorityIcon } from "./issue-icons";
-import { UserMenu } from "./user-menu";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 import { toast } from "sonner";
-import { useWorkspace } from "@/lib/use-workspace";
 import type { DropResult } from "@hello-pangea/dnd";
 import {
-  Search,
-  Plus,
-  ChevronDown,
-  ChevronRight,
+  CircleUser,
+  Inbox as InboxIcon,
   LayoutGrid,
   Layers,
-  SlidersHorizontal,
   List,
-  Box,
   PanelLeft,
-  Folder,
-  Sparkles,
+  Plus,
+  SquarePen,
+  SunMoon,
 } from "lucide-react";
-import type { Issue, Status } from "@/lib/workspace";
+import { Button } from "@/components/ui/button";
+import { useWorkspace } from "@/lib/use-workspace";
+import { cn } from "@/lib/utils";
+import { statuses, type Issue, type Status } from "@/lib/workspace";
+import CommandPalette, { type Command } from "./command-palette";
+import {
+  FilterBar,
+  matchesFilters,
+  noFilters,
+  type Filters,
+} from "./filter-bar";
+import Inbox from "./inbox";
 import IssueDialog from "./issue-dialog";
+import IssuePanel from "./issue-panel";
+import IssueViews, { EmptyState } from "./issue-views";
+import ProjectDialog from "./project-dialog";
+import ProjectsTable from "./projects-table";
+import { issueOptions } from "./property-select";
+import { Sidebar, type Page } from "./sidebar";
+
+const isTyping = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  (target.matches("input,textarea,select") || target.isContentEditable);
+
 export default function Workspace({
   teamId,
   user,
@@ -46,22 +49,40 @@ export default function Workspace({
   onSignOut: () => Promise<void>;
   signingOut: boolean;
 }) {
-  const state = useWorkspace(teamId);
-  const [page, setPage] = useState<"issues" | "projects">("issues");
+  const state = useWorkspace(teamId, user.id);
+  const { resolvedTheme, setTheme } = useTheme();
+  const [page, setPage] = useState<Page>("issues");
   const [projectId, setProjectId] = useState("");
-  const [query, setQuery] = useState("");
   const [view, setView] = useState<"board" | "list">("board");
-  const [priority, setPriority] = useState("");
-  const [filters, setFilters] = useState(false);
-  const [editing, setEditing] = useState<Issue | null>(null);
+  const [filters, setFilters] = useState<Filters>(noFilters);
+  const [selectedId, setSelectedId] = useState("");
+  const [creating, setCreating] = useState<Issue | null>(null);
   const [projectDialog, setProjectDialog] = useState(false);
+  const [palette, setPalette] = useState(false);
   const [sidebar, setSidebar] = useState(false);
   const [saving, setSaving] = useState(false);
-  async function persist(action: () => Promise<void>, message: string) {
+  const lastKey = useRef({ key: "", at: 0 });
+
+  const project = state.projects.find((p) => p.id === projectId);
+  const selected = state.issues.find((i) => i.id === selectedId);
+  const unread = state.notifications.filter((n) => !n.read_at);
+  const mine = state.issues.filter((i) => i.assignee === user.id);
+  const scoped =
+    page === "my-issues"
+      ? mine
+      : state.issues.filter((i) => !projectId || i.projectId === projectId);
+  const visible = scoped.filter((i) => matchesFilters(i, filters));
+  // Keyboard navigation follows the on-screen order: grouped by status.
+  const ordered = statuses.flatMap((s) =>
+    visible.filter((i) => i.status === s),
+  );
+  const onIssuePage = page === "issues" || page === "my-issues";
+
+  async function persist(action: () => Promise<void>, message?: string) {
     setSaving(true);
     try {
       await action();
-      toast.success(message);
+      if (message) toast.success(message);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Unable to save your change",
@@ -70,403 +91,355 @@ export default function Workspace({
       setSaving(false);
     }
   }
-  const searchRef = useRef<HTMLInputElement>(null);
-  const selectedProject = state.projects.find((p) => p.id === projectId);
-  const issues = state.issues.filter(
-    (i) =>
-      (!projectId || i.projectId === projectId) &&
-      (!priority || i.priority === priority) &&
-      i.title.toLowerCase().includes(query.toLowerCase()),
-  );
-  function createIssue(status: Status = "Todo") {
-    setEditing({
+
+  function createIssue(status: Status = "Todo", parent?: Issue) {
+    setCreating({
       id: crypto.randomUUID(),
       title: "",
       description: "",
       status,
       priority: "No priority",
-      projectId,
+      projectId: parent?.projectId ?? projectId,
       label: "Feature",
-      assignee: "",
+      assignee: page === "my-issues" ? user.id : "",
+      dueDate: "",
+      parentId: parent?.id ?? "",
+      identifier: "",
     });
   }
+
+  function navigate(next: Page, id = "") {
+    setPage(next);
+    setProjectId(id);
+    setFilters(noFilters);
+    setSidebar(false);
+  }
+
   useEffect(() => {
-    function key(e: KeyboardEvent) {
-      if (
-        e.target instanceof HTMLElement &&
-        (e.target.matches("input,textarea,select") ||
-          e.target.isContentEditable)
-      )
-        return;
-      if (
-        e.key === "c" &&
-        !e.metaKey &&
-        !e.ctrlKey &&
-        !editing &&
-        !projectDialog
-      ) {
-        e.preventDefault();
-        createIssue();
-      }
+    function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        searchRef.current?.focus();
+        setPalette((open) => !open);
+        return;
+      }
+      // Radix marks Escape handled when it closes a menu or select.
+      if (e.defaultPrevented || isTyping(e.target)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (creating || projectDialog || palette) return;
+      const previous = lastKey.current;
+      lastKey.current = { key: e.key, at: Date.now() };
+      if (previous.key === "g" && Date.now() - previous.at < 1000) {
+        const target = (
+          { i: "inbox", m: "my-issues", a: "issues", p: "projects" } as const
+        )[e.key];
+        if (target) return navigate(target);
+      }
+      if (e.key === "c") {
+        e.preventDefault();
+        createIssue();
+      } else if (e.key === "Escape" && selectedId) {
+        setSelectedId("");
+      } else if (
+        selectedId &&
+        ["j", "k", "ArrowDown", "ArrowUp"].includes(e.key)
+      ) {
+        e.preventDefault();
+        const step = e.key === "j" || e.key === "ArrowDown" ? 1 : -1;
+        const index = ordered.findIndex((i) => i.id === selectedId);
+        const next = ordered[index + step];
+        if (next) setSelectedId(next.id);
       }
     }
-    window.addEventListener("keydown", key);
-    return () => window.removeEventListener("keydown", key);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   });
 
   function dragEnd(result: DropResult) {
     if (!result.destination) return;
-    const destination = issues.filter(
+    const destination = visible.filter(
       (i) =>
         i.status === result.destination!.droppableId &&
         i.id !== result.draggableId,
     );
-    void persist(
-      () =>
-        state.moveIssue(
-          result.draggableId,
-          result.destination!.droppableId as Status,
-          destination[result.destination!.index]?.id,
-        ),
-      "Issue moved",
+    void persist(() =>
+      state.moveIssue(
+        result.draggableId,
+        result.destination!.droppableId as Status,
+        destination[result.destination!.index]?.id,
+      ),
     );
   }
-  function navigate(next: "issues" | "projects", id = "") {
-    setPage(next);
-    setProjectId(id);
-    setQuery("");
-    setSidebar(false);
-  }
-  function renderCard(issue: Issue) {
-    return (
-      <>
-        <div className="flex items-center justify-end text-[9px] text-muted-foreground">
-          <PriorityIcon priority={issue.priority} />
-        </div>
-        <h3 className="mt-2.5 mb-[18px] text-xs leading-[1.65] font-[450] tracking-[-.05px] min-[1600px]:text-[13px]">
-          {issue.title}
-        </h3>
-        <div className="flex items-center justify-between gap-2">
-          <IssueLabel label={issue.label} />
-          <span className="flex items-center gap-[9px] text-faint-foreground">
-            {issue.projectId && <Box size={12} />}
-            <IssueAvatar
-              assignee={issue.assignee}
-              members={state.members}
-              small
-            />
-          </span>
-        </div>
-      </>
-    );
-  }
+
+  const options = issueOptions(state.members, state.projects);
+  const title = {
+    inbox: "Inbox",
+    "my-issues": "My issues",
+    issues: project?.name ?? "All issues",
+    projects: "Projects",
+  }[page];
+  const count = {
+    inbox: unread.length,
+    "my-issues": visible.length,
+    issues: visible.length,
+    projects: state.projects.length,
+  }[page];
+  const commands: Command[] = [
+    {
+      id: "new-issue",
+      group: "Actions",
+      label: "Create issue",
+      shortcut: "C",
+      icon: <SquarePen size={14} />,
+      run: () => createIssue(),
+    },
+    {
+      id: "new-project",
+      group: "Actions",
+      label: "Create project",
+      icon: <Plus size={14} />,
+      run: () => setProjectDialog(true),
+    },
+    {
+      id: "theme",
+      group: "Actions",
+      label: `Switch to ${resolvedTheme === "dark" ? "light" : "dark"} theme`,
+      icon: <SunMoon size={14} />,
+      run: () => setTheme(resolvedTheme === "dark" ? "light" : "dark"),
+    },
+    {
+      id: "go-inbox",
+      group: "Go to",
+      label: "Inbox",
+      shortcut: "G I",
+      icon: <InboxIcon size={14} />,
+      run: () => navigate("inbox"),
+    },
+    {
+      id: "go-mine",
+      group: "Go to",
+      label: "My issues",
+      shortcut: "G M",
+      icon: <CircleUser size={14} />,
+      run: () => navigate("my-issues"),
+    },
+    {
+      id: "go-all",
+      group: "Go to",
+      label: "All issues",
+      shortcut: "G A",
+      icon: <Layers size={14} />,
+      run: () => navigate("issues"),
+    },
+    {
+      id: "go-projects",
+      group: "Go to",
+      label: "Projects",
+      shortcut: "G P",
+      icon: <LayoutGrid size={14} />,
+      run: () => navigate("projects"),
+    },
+    ...state.projects.map((p) => ({
+      id: `project-${p.id}`,
+      group: "Go to" as const,
+      label: p.name,
+      icon: (
+        <i className="size-2 rounded-[2px]" style={{ background: p.color }} />
+      ),
+      run: () => navigate("issues", p.id),
+    })),
+  ];
+
   return (
-    <div className="flex min-h-dvh">
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 flex w-[232px] shrink-0 flex-col border-r bg-sidebar px-3.5 pt-[25px] max-[1200px]:w-[205px] max-[700px]:z-40 max-[700px]:w-[230px] max-[700px]:shadow-[20px_0_50px_#0008]",
-          !sidebar && "max-[700px]:hidden",
-        )}
-      >
-        <Button
-          variant="ghost"
-          size="none"
-          className="flex w-full items-center gap-2.5 px-2 text-base font-semibold"
-          onClick={() => navigate("issues")}
-        >
-          <span className="grid size-[27px] place-items-center rounded-lg bg-primary text-[26px] text-primary-foreground">
-            ◒
-          </span>{" "}
-          Orbit <ChevronDown size={14} />
-          <span className="ml-auto text-[10px] font-normal text-muted-foreground">
-            ⌘ K
+    <div className="flex h-dvh">
+      <Sidebar
+        open={sidebar}
+        teamName={state.teamName}
+        page={page}
+        projectId={projectId}
+        projects={state.projects}
+        counts={{
+          inbox: unread.length,
+          mine: mine.filter((i) => i.status !== "Done").length,
+          all: state.issues.length,
+        }}
+        user={user}
+        signingOut={signingOut}
+        onNavigate={navigate}
+        onSearch={() => setPalette(true)}
+        onCreateIssue={() => createIssue()}
+        onCreateProject={() => setProjectDialog(true)}
+        onSignOut={onSignOut}
+      />
+      {sidebar && (
+        <div
+          aria-hidden
+          className="fixed inset-0 z-30 bg-black/30 min-[701px]:hidden"
+          onClick={() => setSidebar(false)}
+        />
+      )}
+      <main className="ml-[220px] flex min-w-0 flex-1 flex-col max-[700px]:ml-0">
+        <header className="flex h-[38px] shrink-0 items-center gap-2 border-b px-4">
+          <button
+            type="button"
+            className="grid size-7 place-items-center rounded-md text-muted-foreground hover:bg-hover min-[701px]:hidden"
+            onClick={() => setSidebar(!sidebar)}
+            aria-label="Toggle navigation"
+          >
+            <PanelLeft size={16} />
+          </button>
+          {project && (
+            <i
+              className="size-2.5 rounded-[3px]"
+              style={{ background: project.color }}
+            />
+          )}
+          <h1 className="truncate text-[13px] font-semibold">{title}</h1>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {count}
           </span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="none"
-          className="mx-1 mt-[25px] mb-7 flex h-[34px] items-center justify-start gap-2 rounded-md border border-border bg-card px-[11px] text-xs hover:bg-hover [&_kbd]:ml-auto [&_kbd]:rounded-[3px] [&_kbd]:border [&_kbd]:border-border [&_kbd]:px-1"
-          onClick={() => createIssue()}
-        >
-          <Plus size={15} /> Create issue <kbd>C</kbd>
-        </Button>
-        <div className="mb-2.5 px-3 text-[10px] font-semibold tracking-[.055em] text-faint-foreground uppercase">
-          Workspace
-        </div>
-        <nav className="flex flex-col gap-1">
-          <Button
-            variant="ghost"
-            size="none"
-            data-active={page === "issues" && !projectId}
-            className="h-[35px] w-full justify-start gap-2.5 rounded-[5px] px-3 text-left text-xs font-normal text-soft-foreground hover:bg-hover data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
-            onClick={() => navigate("issues")}
-          >
-            <Layers size={16} /> Issues{" "}
-            <span className="ml-auto text-[10px] text-accent-foreground">
-              {state.issues.length}
-            </span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="none"
-            data-active={page === "projects"}
-            className="h-[35px] w-full justify-start gap-2.5 rounded-[5px] px-3 text-left text-xs font-normal text-soft-foreground hover:bg-hover data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
-            onClick={() => navigate("projects")}
-          >
-            <LayoutGrid size={16} /> Projects
-          </Button>
-        </nav>
-        <div className="mt-[34px] mb-2.5 flex items-center justify-between px-3 text-[10px] font-semibold tracking-[.055em] text-faint-foreground uppercase">
-          Your projects
-          <Button
-            variant="ghost"
-            size="none"
-            className="inline-flex size-[25px] items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-            onClick={() => setProjectDialog(true)}
-            aria-label="Create project"
-          >
-            <Plus size={13} />
-          </Button>
-        </div>
-        <nav className="flex flex-col gap-1">
-          {state.projects.map((p) => (
-            <Button
-              variant="ghost"
-              size="none"
-              key={p.id}
-              data-active={page === "issues" && projectId === p.id}
-              className="h-[35px] w-full justify-start gap-2.5 rounded-[5px] px-3 text-left text-xs font-normal text-soft-foreground hover:bg-hover data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
-              onClick={() => navigate("issues", p.id)}
-            >
-              <Box size={15} color={p.color} />
-              <span className="truncate">{p.name}</span>
-            </Button>
-          ))}
-        </nav>
-        <div className="relative mx-2.5 mt-auto mb-[38px] min-h-[270px] overflow-hidden pt-[75px] [&>strong]:text-[11px] [&>strong]:font-medium [&>strong]:text-soft-foreground [&>p]:my-[11px] [&>p]:text-[11px] [&>p]:leading-[1.7] [&>p]:text-faint-foreground">
-          <span className="mb-3 block text-accent-foreground">
-            <Sparkles size={15} />
-          </span>
-          <strong>A little space for big ideas.</strong>
-          <p>
-            Make something worth
-            <br />
-            working on.
-          </p>
-          <div className="absolute -bottom-[5px] -left-2.5 h-[90px] w-[200px] opacity-50 [&>span]:absolute [&>span]:top-5 [&>span]:left-1.5 [&>span]:h-[58px] [&>span]:w-[150px] [&>span]:-rotate-30 [&>span]:rounded-[50%] [&>span]:border [&>span]:border-primary/40 [&>span+span]:rotate-[28deg] [&>span+span]:border-border [&>i]:absolute [&>i]:top-[18px] [&>i]:right-[43px] [&>i]:size-[7px] [&>i]:rounded-full [&>i]:bg-primary [&>i]:shadow-[0_0_15px_var(--primary)]">
-            <span />
-            <span />
-            <i />
-          </div>
-        </div>
-      </aside>
-      <main className="ml-[232px] flex min-w-0 flex-1 flex-col max-[1200px]:ml-[205px] max-[700px]:ml-0">
-        <header className="flex h-[61px] shrink-0 items-center justify-between border-b px-8 text-[11px] max-[700px]:px-4 [&>div]:flex [&>div]:items-center [&>div]:gap-3 [&>div]:text-muted-foreground [&_strong]:font-medium [&_strong]:text-foreground">
-          <div>
-            <Button
-              variant="ghost"
-              size="none"
-              className="inline-flex size-[25px] items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground min-[701px]:hidden"
-              onClick={() => setSidebar(!sidebar)}
-              aria-label="Toggle navigation"
-            >
-              <PanelLeft size={18} />
-            </Button>
-            <span className="inline-grid size-[18px] place-items-center rounded border border-input bg-secondary text-[10px] font-semibold text-accent-foreground">
-              O
-            </span>
-            <span>Orbit</span>
-            <ChevronRight size={13} />
-            <strong>
-              {page === "projects"
-                ? "Projects"
-                : selectedProject?.name || "Issues"}
-            </strong>
-          </div>
-          <UserMenu
-            name={user.name}
-            onSignOut={onSignOut}
-            signingOut={signingOut}
-          />
-        </header>
-        <section className="px-[34px] pt-[38px] pb-[29px] max-[1200px]:px-6 max-[700px]:px-5 max-[700px]:py-7">
-          <div className="mb-3 text-[9px] font-medium tracking-[.15em] text-muted-foreground">
-            YOUR WORK, IN MOTION
-          </div>
-          <div className="flex items-center justify-between gap-5 max-[700px]:items-start [&_h1]:m-0 [&_h1]:flex [&_h1]:items-center [&_h1]:gap-3 [&_h1]:text-[26px] [&_h1]:font-[550] [&_h1]:tracking-[-.85px] max-[700px]:[&_h1]:text-[23px] [&_p]:mt-2.5 [&_p]:text-xs [&_p]:leading-normal [&_p]:text-muted-foreground max-[700px]:[&_p]:max-w-[235px] max-[700px]:[&_p]:text-[11px]">
-            <div>
-              <h1>
-                {page === "projects"
-                  ? "Projects"
-                  : selectedProject?.name || "All issues"}
-                <span className="rounded-[5px] border border-border px-1.5 py-[3px] text-[11px] font-normal tracking-normal text-muted-foreground">
-                  {page === "projects" ? state.projects.length : issues.length}
-                </span>
-              </h1>
-              <p>
-                {page === "projects"
-                  ? "Big ideas, broken down into great work."
-                  : selectedProject?.description ||
-                    "A shared view of what’s next, what’s moving, and what’s done."}
-              </p>
+          {onIssuePage && (
+            <div className="ml-2 flex rounded-md border p-px text-xs">
+              {(["board", "list"] as const).map((v) => (
+                <button
+                  type="button"
+                  key={v}
+                  aria-pressed={view === v}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-[5px] px-2 py-0.5 text-muted-foreground capitalize",
+                    view === v &&
+                      "bg-card text-foreground shadow-[0_0_0_1px_var(--input)]",
+                  )}
+                  onClick={() => setView(v)}
+                >
+                  {v === "board" ? (
+                    <LayoutGrid size={12} />
+                  ) : (
+                    <List size={12} />
+                  )}
+                  <span className="max-sm:hidden">{v}</span>
+                </button>
+              ))}
             </div>
+          )}
+          <span className="flex-1" />
+          {page === "inbox" && unread.length > 0 && (
             <Button
-              className="max-[700px]:gap-0 max-[700px]:p-[9px] max-[700px]:text-[0px] max-[700px]:[&_kbd]:hidden border border-white/15 shadow-[0_1px_3px_#0004] [&_kbd]:ml-2.5 [&_kbd]:rounded-[3px] [&_kbd]:border [&_kbd]:border-primary-foreground/25 [&_kbd]:px-1 [&_kbd]:text-primary-foreground/60 [&_kbd:empty]:hidden"
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() =>
+                void persist(() => state.markRead(unread.map((n) => n.id)))
+              }
+            >
+              Mark all read
+            </Button>
+          )}
+          {page !== "inbox" && (
+            <Button
+              size="sm"
+              className="h-7 text-xs"
               onClick={() =>
                 page === "projects" ? setProjectDialog(true) : createIssue()
               }
             >
-              <Plus size={15} />
-              {page === "projects" ? "New project" : "New issue"}
-              <kbd>{page === "projects" ? "" : "C"}</kbd>
-            </Button>
-          </div>
-        </section>
-        <div className="relative flex h-14 shrink-0 items-center justify-between gap-2.5 border-y border-t-border px-[34px] max-[1200px]:px-6 max-[700px]:px-4">
-          <div className="flex items-center gap-1">
-            {page === "issues" ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="none"
-                  data-active={view === "board"}
-                  className="flex items-center gap-[7px] rounded-[5px] px-2.5 py-1.5 text-[11px] font-normal text-muted-foreground data-[active=true]:bg-muted data-[active=true]:text-foreground data-[active=true]:shadow-[inset_0_0_0_1px_var(--input)]"
-                  onClick={() => setView("board")}
-                >
-                  <LayoutGrid size={14} /> Board
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="none"
-                  data-active={view === "list"}
-                  className="flex items-center gap-[7px] rounded-[5px] px-2.5 py-1.5 text-[11px] font-normal text-muted-foreground data-[active=true]:bg-muted data-[active=true]:text-foreground data-[active=true]:shadow-[inset_0_0_0_1px_var(--input)]"
-                  onClick={() => setView("list")}
-                >
-                  <List size={15} /> List
-                </Button>
-              </>
-            ) : (
-              <span className="flex items-center gap-2 text-[11px] text-soft-foreground">
-                <Folder size={15} /> All projects
+              <Plus size={13} />
+              <span className="max-sm:hidden">
+                {page === "projects" ? "New project" : "New issue"}
               </span>
-            )}
-          </div>
-          <div className="flex items-center gap-4 max-[700px]:gap-2.5">
-            <div className="flex items-center gap-2 text-muted-foreground [&_kbd]:text-[9px] max-[700px]:[&_kbd]:hidden">
-              <Search size={14} />
-              <Input
-                className="h-auto w-[126px] rounded-none border-0 p-0 text-[11px] shadow-none placeholder:text-faint-foreground focus-visible:ring-0 md:text-[11px] max-[700px]:w-[100px]"
-                ref={searchRef}
-                aria-label="Search workspace"
-                placeholder={
-                  page === "issues" ? "Search issues…" : "Search projects…"
-                }
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <kbd>⌘ K</kbd>
-            </div>
-            {page === "issues" && (
-              <Button
-                variant="ghost"
-                size="none"
-                className={cn(
-                  "flex items-center gap-[7px] rounded-[5px] border border-border px-[9px] py-1.5 text-[10px] font-normal text-soft-foreground",
-                  priority && "border-ring/60 text-accent-foreground",
-                )}
-                onClick={() => setFilters(!filters)}
-              >
-                <SlidersHorizontal size={14} /> Filter{" "}
-                {priority && <span>1</span>}
-              </Button>
-            )}
-          </div>
-          {filters && page === "issues" && (
-            <div className="absolute top-12 right-[34px] z-5 grid gap-3 rounded-lg border border-input bg-popover p-4 text-[11px] shadow-[0_12px_30px_#0005]">
-              <strong>Filter by priority</strong>
-              <Select
-                value={priority || "all"}
-                onValueChange={(v) => setPriority(v === "all" ? "" : v)}
-              >
-                <SelectTrigger
-                  size="sm"
-                  aria-label="Filter priority"
-                  className="h-auto rounded-[5px] bg-muted p-[7px] text-[10px] text-soft-foreground"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all" className="text-xs">
-                    All priorities
-                  </SelectItem>
-                  {["Urgent", "High", "Medium", "Low", "No priority"].map(
-                    (p) => (
-                      <SelectItem key={p} value={p} className="text-xs">
-                        {p}
-                      </SelectItem>
-                    ),
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+            </Button>
           )}
-        </div>
-        {page === "issues" ? (
-          <IssueViews
-            view={view}
-            members={state.members}
-            issues={issues}
-            dragEnd={dragEnd}
-            createIssue={createIssue}
-            setEditing={setEditing}
-            renderCard={renderCard}
-          />
-        ) : (
-          <ProjectsGrid
-            projects={state.projects}
-            issues={state.issues}
-            query={query}
-            onOpen={(id) => navigate("issues", id)}
-            onCreate={() => setProjectDialog(true)}
+        </header>
+        {onIssuePage && state.issues.length > 0 && (
+          <FilterBar
+            filters={filters}
+            options={options}
+            fields={
+              page === "my-issues"
+                ? ["priority", "label", "project"]
+                : projectId
+                  ? ["assignee", "priority", "label"]
+                  : ["assignee", "priority", "label", "project"]
+            }
+            onChange={setFilters}
           />
         )}
-        <footer className="mt-auto flex items-center justify-between gap-5 px-8 py-[17px] text-[9px] text-faint-foreground max-[700px]:px-5 max-[700px]:py-4 [&>span]:flex [&>span]:items-center [&>span]:gap-2 max-[1200px]:[&>span:last-child]:hidden">
-          <span>
-            <span className="text-sm text-faint-foreground">◒</span> A little
-            more focused. A little further forward.
-          </span>
-          <span>
-            {page === "issues"
-              ? "Drag issues to update their status"
-              : "Build something that matters"}
-            <span className="mx-1 text-faint-foreground">·</span> Saved on this
-            device
-          </span>
-        </footer>
+        <div className="flex min-h-0 flex-1">
+          <div className="flex min-w-0 flex-1 flex-col overflow-auto">
+            {page === "inbox" ? (
+              <Inbox
+                notifications={state.notifications}
+                issues={state.issues}
+                members={state.members}
+                selectedId={selectedId}
+                onOpen={(notification) => {
+                  setSelectedId(notification.issue_id);
+                  if (!notification.read_at)
+                    void persist(() => state.markRead([notification.id]));
+                }}
+              />
+            ) : page === "projects" ? (
+              <ProjectsTable
+                projects={state.projects}
+                issues={state.issues}
+                members={state.members}
+                onOpen={(id) => navigate("issues", id)}
+                onCreate={() => setProjectDialog(true)}
+                onSave={(p) => void persist(() => state.saveProject(p))}
+              />
+            ) : state.issues.length === 0 ? (
+              <EmptyState onCreate={() => createIssue()} />
+            ) : (
+              <IssueViews
+                view={view}
+                members={state.members}
+                issues={visible}
+                selectedId={selectedId}
+                dragEnd={dragEnd}
+                createIssue={createIssue}
+                onSelect={(issue) => setSelectedId(issue.id)}
+              />
+            )}
+          </div>
+          {selected && (
+            <IssuePanel
+              key={selected.id}
+              issue={selected}
+              issues={state.issues}
+              members={state.members}
+              projects={state.projects}
+              saving={saving}
+              onSave={(issue) => void persist(() => state.saveIssue(issue))}
+              onDelete={() =>
+                void persist(async () => {
+                  await state.deleteIssue(selected.id);
+                  setSelectedId("");
+                }, "Issue deleted")
+              }
+              onClose={() => setSelectedId("")}
+              onSelect={setSelectedId}
+              onAddSubIssue={() => createIssue("Todo", selected)}
+              onComment={(body) =>
+                persist(() => state.addComment(selected.id, body))
+              }
+            />
+          )}
+        </div>
       </main>
-      {editing && (
+      {creating && (
         <IssueDialog
-          key={editing.id}
-          issue={editing}
+          key={creating.id}
+          issue={creating}
+          parent={state.issues.find((i) => i.id === creating.parentId)}
           projects={state.projects}
           members={state.members}
           pending={saving}
-          existing={state.issues.some((i) => i.id === editing.id)}
-          onClose={() => setEditing(null)}
+          onClose={() => setCreating(null)}
           onSave={(issue) =>
             persist(async () => {
               await state.saveIssue(issue);
-              setEditing(null);
-            }, "Issue saved")
-          }
-          onDelete={() =>
-            persist(async () => {
-              await state.deleteIssue(editing.id);
-              setEditing(null);
-            }, "Issue deleted")
+              setCreating(null);
+              setSelectedId(issue.id);
+            }, "Issue created")
           }
         />
       )}
@@ -474,13 +447,21 @@ export default function Workspace({
         <ProjectDialog
           onClose={() => setProjectDialog(false)}
           pending={saving}
-          onSave={(project) =>
+          onSave={(p) =>
             persist(async () => {
-              await state.createProject(project);
+              await state.saveProject(p);
               setProjectDialog(false);
-              navigate("issues", project.id);
+              navigate("issues", p.id);
             }, "Project created")
           }
+        />
+      )}
+      {palette && (
+        <CommandPalette
+          commands={commands}
+          issues={state.issues}
+          onOpenIssue={setSelectedId}
+          onClose={() => setPalette(false)}
         />
       )}
     </div>

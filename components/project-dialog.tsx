@@ -45,14 +45,9 @@ export default function ProjectDialog({
               name: String(data.get("name")).trim(),
               description: String(data.get("description")),
               color: String(data.get("color")),
-              target: data.get("target")
-                ? new Date(
-                    String(data.get("target")) + "T12:00:00",
-                  ).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "2-digit",
-                  })
-                : "No target",
+              target: String(data.get("target") ?? ""),
+              health: "Planned",
+              leadId: "",
             });
           }}
         >

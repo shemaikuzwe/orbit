@@ -11,18 +11,38 @@ streams:
         WHERE user_id = auth.user_id()
     queries:
       - |
-        SELECT id, team_id, name, description, color, target
+        SELECT id, name FROM public.organization AS teams
+        WHERE id IN my_teams
+      - |
+        SELECT id, team_id, name, description, color, target, health, lead_id
         FROM public.projects
         WHERE team_id IN my_teams
       - |
         SELECT id, team_id, title, description, status, priority,
-               project_id, label, assignee_id, position
+               project_id, label, assignee_id, position,
+               due_date, parent_id, number, creator_id
         FROM public.issues
+        WHERE team_id IN my_teams
+      - |
+        SELECT id, team_id, issue_id, author_id, body, created_at
+        FROM public.comments
+        WHERE team_id IN my_teams
+      - |
+        SELECT id, team_id, issue_id, actor_id, field,
+               "from" AS from_value, "to" AS to_value, created_at
+        FROM public.issue_events
         WHERE team_id IN my_teams
       - |
         SELECT id, organization_id AS team_id, user_id
         FROM public.member AS team_members
         WHERE organization_id IN my_teams
+
+  my_notifications:
+    auto_subscribe: true
+    query: |
+      SELECT id, team_id, user_id, issue_id, actor_id, kind, read_at, created_at
+      FROM public.notifications
+      WHERE user_id = auth.user_id()
 
   assignee_profiles:
     auto_subscribe: true
